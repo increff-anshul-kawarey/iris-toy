@@ -25,7 +25,7 @@ public class FileController {
     @ApiOperation(value = "Download Input for File ")
     @RequestMapping(path = "/api/file/input/{fileName}", method = RequestMethod.GET)
     public void exportInputTSV(@PathVariable String fileName, HttpServletResponse response) throws IOException, InterruptedException {
-        ProcessTsv.createFileResponse(new File("src/main/java/com/iris/increff/Files/fileInput.tsv"), response);
+        ProcessTsv.createFileResponse(new File("src/main/resources/Files/fileInput.tsv"), response);
         System.out.println("Export Input File Download is Successful :- " + fileName);
     }
 
