@@ -38,7 +38,7 @@ public class ReportsController {
     @ApiOperation(value = "Download Reports")
     @RequestMapping(path = "/api/report/download/{reportName}", method = RequestMethod.GET)
     public void getDownloadReport2(@PathVariable String reportName, HttpServletResponse response) throws IOException {
-        ProcessTsv.createFileResponse(new File("src/main/java/com/iris/increff/Files/fileInput.tsv"), response);
+        ProcessTsv.createFileResponse(new File("src/main/resources/Files/fileInput.tsv"), response);
         System.out.println("Download Report is Successful :-" + reportName);
     }
 }

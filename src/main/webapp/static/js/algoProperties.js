@@ -37,7 +37,7 @@ function updateAlgo(event) {
         data["parameter5"] =$("#algo-edit-form input[name=parameter5]").val();
     	var json = JSON.stringify(data);
     	url=getAlgoUrl();
-        ajaxRestApiCallWithData(url, 'POST',successFunction, json)
+        ajaxRestApiCallWithData(url, 'PUT',successFunction, json)
         event.preventDefault();
 
 }

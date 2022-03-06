@@ -32,7 +32,7 @@ public class FileController {
     @ApiOperation(value = "Download template for File")
     @RequestMapping(path = "/api/file/template/{fileName}", method = RequestMethod.GET)
     public void exportTemplateTSV(@PathVariable String fileName, HttpServletResponse response) throws IOException {
-        ProcessTsv.createFileResponse(new File("src/main/java/com/iris/increff/Files/fileTemplate.tsv"), response);
+        ProcessTsv.createFileResponse(new File("src/main/resources/Files/fileTemplate.tsv"), response);
         System.out.println("Download Input Template File is Successful :- " + fileName);
 
     }
@@ -40,7 +40,7 @@ public class FileController {
     @ApiOperation(value = "Download Errors for input")
     @RequestMapping(path = "/api/file/errors/{fileName}", method = RequestMethod.GET)
     public void exportErrorTSV(@PathVariable String fileName, HttpServletResponse response) throws IOException {
-        ProcessTsv.createFileResponse(new File("src/main/java/com/iris/increff/Files/fileError.tsv"), response);
+        ProcessTsv.createFileResponse(new File("src/main/resources/Files/fileError.tsv"), response);
         System.out.println("Download Validation Error for File is Successful :- " + fileName);
 
     }

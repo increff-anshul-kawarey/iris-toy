@@ -23,7 +23,7 @@ public class AlgoParametersController {
     }
 
     @ApiOperation(value = "update parameter")
-    @RequestMapping(path = "/api/algo", method = RequestMethod.POST)
+    @RequestMapping(path = "/api/algo", method = RequestMethod.PUT)
     public AlgoParametersData addParams(@RequestBody AlgoParametersData algoParametersData) throws ApiException {
         System.out.println("Algo Parameter Updated Successfully");
         System.out.println(algoParametersData.getParameter1());

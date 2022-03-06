@@ -1,5 +1,5 @@
 var baseUrl = $("meta[name=baseUrl]").attr("content")
-baseUrl="http://localhost:9000/toyIRIS"
+baseUrl="http://localhost:9000/toy-iris"
 var allData ={}
 function getUploadUrl() {
 	return baseUrl + "/api/file";
