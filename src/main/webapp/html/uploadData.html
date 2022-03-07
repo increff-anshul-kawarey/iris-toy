@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <head th:replace="mysnippets.html :: name_head"></head>
+<body>
+<header th:replace="mysnippets.html :: name_header"></header>
+<div th:replace="mysnippets.html :: common_modals"></div>
+
+<div class="row" id="body-row">
+    <div th:replace="mysnippets.html :: side_bar"></div>
+    <div class="col">
+    <div>
+
+        <div class="col-12">
+        <table class="table table-striped text-center" id="upload-table">
+        </table>
+    </div>
+
+    </div>
+
+</div>
+
+<footer th:replace="mysnippets.html :: name_footer"></footer>
+    <script th:src="@{/static/js/uploadJson.js}"></script>
+    <script th:src="@{/static/js/upload.js}"></script>
+</body></html>

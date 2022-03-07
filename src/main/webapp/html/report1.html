@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <head th:replace="mysnippets.html :: name_head"></head>
+<body>
+<header th:replace="mysnippets.html :: name_header"></header>
+<div th:replace="mysnippets.html :: common_modals"></div>
+
+<div class="row" id="body-row">
+    <div th:replace="mysnippets.html :: side_bar"></div>
+    <div class="col">
+
+        <div class="card mt-2">
+            <div class="card-header">
+            <div class="btn-toolbar justify-content-between" role="toolbar" aria-label="Toolbar with button groups">
+                <div class="btn-group" role="group" aria-label="First group">
+                    <span><i class="bi bi-table me-2"></i></span>  &nbsp; Report 1
+                </div>
+                <div class="input-group">
+                    <span onclick="downloadReportData('report1')"><i class="bi bi-arrow-down"></i></span>
+                </div>
+            </div>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="report1Table" class="table table-striped table-bordered table-sm text-center text-uppercase" style="width:100%">
+            </table>
+                </div></div>
+
+
+
+
+    </div>
+
+</div>
+
+<footer th:replace="mysnippets.html :: name_footer"></footer>
+<script th:src="@{/static/js/report1.js}"></script>
+</body></html>
