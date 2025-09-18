@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SalesRepository extends JpaRepository<Sales, Integer> {
@@ -47,4 +48,47 @@ public interface SalesRepository extends JpaRepository<Sales, Integer> {
      */
     @Query("SELECT s.sku.style.category, SUM(s.revenue), SUM(s.quantity) FROM Sales s WHERE s.date BETWEEN :startDate AND :endDate GROUP BY s.sku.style.category")
     List<Object[]> getSalesSummaryByCategory(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
+    
+    // Explicitly declare JpaRepository methods that should be inherited
+    // This ensures they are available even if there are version issues
+    
+    /**
+     * Find sales by ID
+     * @param id the ID to search for
+     * @return Optional containing Sales entity if found, empty otherwise
+     */
+    Optional<Sales> findById(Integer id);
+    
+    /**
+     * Save a sales entity
+     * @param sales the sales entity to save
+     * @return the saved sales entity
+     */
+    <S extends Sales> S save(S sales);
+    
+    /**
+     * Save multiple sales entities
+     * @param salesList the list of sales entities to save
+     * @return list of saved sales entities
+     */
+    <S extends Sales> List<S> saveAll(Iterable<S> salesList);
+    
+    /**
+     * Check if sales exists by ID
+     * @param id the ID to check
+     * @return true if exists, false otherwise
+     */
+    boolean existsById(Integer id);
+    
+    /**
+     * Delete sales by ID
+     * @param id the ID of the sales to delete
+     */
+    void deleteById(Integer id);
+    
+    /**
+     * Find all sales
+     * @return list of all sales entities
+     */
+    List<Sales> findAll();
 }
