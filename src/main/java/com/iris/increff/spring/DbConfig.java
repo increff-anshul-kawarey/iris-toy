@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @Configuration
 public class DbConfig {
 
-	public static final String PACKAGE_POJO = "com.iris.increff.pojo";
+	public static final String PACKAGE_POJO = "com.iris.increff.model";
 	
 	@Value("${jdbc.driverClassName}")
 	private String jdbcDriver;

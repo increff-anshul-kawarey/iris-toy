@@ -1,25 +1,24 @@
 uploadJson={
 "uploadFiles": [
       {
-      "Display Name": "File 1",
-      "id":"file1",
-      "Description": "description for File 1"
+      "Display Name": "Styles Data",
+      "id":"styles",
+      "Description": "Upload style master data - brand, category, MRP, gender info"
       },
       {
-        "Display Name": "File 2",
-        "id":"file2",
-        "Description": "description for File 2"
+        "Display Name": "Stores Data",
+        "id":"stores",
+        "Description": "Upload store master data - branch and city information"
       },
       {
-        "Display Name": "File 3",
-        "id":"file3",
-      "Description": "description for File 3"
+        "Display Name": "SKUs Data",
+        "id":"skus",
+        "Description": "Upload SKU master data - style-size combinations"
       },
       {
-       "Display Name": "File 4",
-        "id":"file4",
-        "Description": "description for File 4"
+        "Display Name": "Sales Data",
+        "id":"sales",
+        "Description": "Upload sales transaction data - depends on styles, stores, and SKUs"
        }
   ]
-
 }

@@ -25,7 +25,16 @@ function ajaxRestApiCallWithData(url, type, successfunction, json) {
 			successfunction(data);
 		},
 		error: function (errormessage) {
-			messageAlertFail(errormessage.responseJSON.message)
+			// Enhanced error handling for upload responses
+            if (errormessage.responseJSON && errormessage.responseJSON.message) {
+                messageAlertFail(errormessage.responseJSON.message);
+            } else if (errormessage.responseJSON && errormessage.responseJSON.errors) {
+                messageAlertFail("Upload failed: " + errormessage.responseJSON.errors.join(", "));
+            } else if (errormessage.responseText) {
+                messageAlertFail("Upload failed: " + errormessage.responseText);
+            } else {
+                messageAlertFail("Upload failed: " + errormessage.statusText);
+            }
 		}
 	});
 }
@@ -37,31 +46,80 @@ function ajaxRestApiCallWithoutData(url, type, successfunction) {
 			successfunction(data);
 		},
 		error: function (errormessage) {
-			messageAlertFail(errormessage.responseJSON.message)
+			// Enhanced error handling for upload responses
+            if (errormessage.responseJSON && errormessage.responseJSON.message) {
+                messageAlertFail(errormessage.responseJSON.message);
+            } else if (errormessage.responseJSON && errormessage.responseJSON.errors) {
+                messageAlertFail("Upload failed: " + errormessage.responseJSON.errors.join(", "));
+            } else if (errormessage.responseText) {
+                messageAlertFail("Upload failed: " + errormessage.responseText);
+            } else {
+                messageAlertFail("Upload failed: " + errormessage.statusText);
+            }
 		}
 	});
 }
 function uploadAjax(url,formData)
 {
-			$('#upload-modal').modal('toggle');
-            $.ajax({
-			url: url,
-			type: 'POST',
-			data: formData,
-			processData: false,
-			contentType: false,
-			//uncomment this success and thought what will happen if processing takes few minutes for upload
-//			success: function (data) {
-//                messageAlertInfo("File Uploaded Successfully")
-//
-//			},
-			error: function (errormessage) {
-				messageAlertFail(errormessage.responseJSON.message)
-			}
-		});
+    $('#upload-modal').modal('toggle');
+
+    // Extract file type from URL for status updates
+    var fileType = url.split('/').pop();
+
+    // Set processing status
+    setUploadStatus(fileType, {processing: true});
+
+    $.ajax({
+        url: url,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (data) {
+            // Clear processing status and refresh data
+            fetchDataStatus();
+            if (typeof data === "string") {
+                messageAlertPass("Upload completed: " + data);
+            } else if (data.success === false) {
+                messageAlertFail("Upload failed: " + data.message + " (" + data.errorCount + " errors)");
+                // Show additional error details if available
+                if (data.errors && data.errors.length > 0) {
+                    console.log("Upload errors:", data.errors);
+                }
+            } else {
+                messageAlertPass(data.message || "Upload completed successfully");
+
+                // Show processing messages if available
+                if (data.messages && data.messages.length > 0) {
+                    // Show key messages to user
+                    var keyMessages = data.messages.filter(function(msg) {
+                        return msg.includes("completed") || msg.includes("Saving") || msg.includes("Clearing");
+                    });
+                    if (keyMessages.length > 0) {
+                        setTimeout(function() {
+                            messageAlertPass("Details: " + keyMessages.join(". "));
+                        }, 1000);
+                    }
+                }
+            }
+        },
+        error: function (errormessage) {
+            console.log("Upload error:", errormessage);
+            // Clear processing status and set failed status
+            setUploadStatus(fileType, {failed: true});
+            if (errormessage.responseJSON && errormessage.responseJSON.message) {
+                messageAlertFail(errormessage.responseJSON.message);
+            } else if (errormessage.responseJSON && errormessage.responseJSON.errors) {
+                messageAlertFail("Upload failed: " + errormessage.responseJSON.errors.join(", "));
+            } else if (errormessage.responseText) {
+                messageAlertFail("Upload failed: " + errormessage.responseText);
+            } else {
+                messageAlertFail("Upload failed: " + errormessage.statusText);
+            }
+        }
+    });
 }
 
-// why this method is not having success while others have ?
 function ajaxRestApiCall(url, type) {
 	$.ajax({
 		url: url,
@@ -70,12 +128,20 @@ function ajaxRestApiCall(url, type) {
 			'Content-Type': 'application/json'
 		},
 		error: function (errormessage) {
-			messageAlertFail(errormessage.responseJSON.message)
+			// Enhanced error handling for upload responses
+            if (errormessage.responseJSON && errormessage.responseJSON.message) {
+                messageAlertFail(errormessage.responseJSON.message);
+            } else if (errormessage.responseJSON && errormessage.responseJSON.errors) {
+                messageAlertFail("Upload failed: " + errormessage.responseJSON.errors.join(", "));
+            } else if (errormessage.responseText) {
+                messageAlertFail("Upload failed: " + errormessage.responseText);
+            } else {
+                messageAlertFail("Upload failed: " + errormessage.statusText);
+            }
 		}
 	});
 }
 
-//use alerts as you wants
 function messageAlertFail(message) {
          $.toast({
           heading: 'Error',
@@ -155,12 +221,9 @@ console.log(name)
 }
 function downloadReportData(reportName)
 {
-	var url = getReportUrl()+"/download/"+reportName;
-	//synchronous may not be right way, what if download file takes few minutes ?
-	//what if method is asynchronous then how will you get file because this is synchronous and expect file to be returned
+	var url = getReportUrl()+"/download/"+reportName; and 
 	window.open(url, '_blank').focus();
 }
-//how will you figure out the upload is failed because of validations and then how will you download error
 function downloadErrorFile(id)
 {
 	url=getUploadUrl()+"/errors/"+id
@@ -176,9 +239,31 @@ function downloadInputFileTemplate(id)
 	url=getUploadUrl()+"/template/"+id
 	window.open(url, '_blank').focus();
 }
+
+function setUploadStatus(fileType, status) {
+    // Update the status in the current data and refresh display
+    if (window.currentStatusData) {
+        window.currentStatusData[fileType] = Object.assign(window.currentStatusData[fileType] || {}, status);
+        // Trigger a re-render of the upload list
+        displayUploadList(window.currentStatusData);
+    }
+}
+
+function fetchDataStatus() {
+    $.ajax({
+        url: getUploadUrl() + '/status',
+        type: 'GET',
+        success: function(data) {
+            window.currentStatusData = data;
+            displayUploadList(data);
+        },
+        error: function(err) {
+            console.log("Error fetching data status:", err);
+        }
+    });
+}
 function upload(id)
 {
-//figure out yourself how to know that file upload is success full or not
         var formData = new FormData();
         if(!$('input[type=file]')[0].files[0])
         {

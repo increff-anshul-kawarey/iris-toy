@@ -9,15 +9,39 @@
 <div class="row" id="body-row">
     <div th:replace="mysnippets.html :: side_bar"></div>
     <div class="col">
-    <div>
+        <!-- Upload Page Header -->
+        <div class="upload-header">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-12">
+                        <h1 class="upload-title">
+                            <i class="fa fa-upload"></i>
+                            Data Upload
+                        </h1>
+                        <p class="upload-subtitle">
+                            Manage master data files for the Toy IRIS system
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <div class="col-12">
-        <table class="table table-striped text-center" id="upload-table">
-        </table>
+        <!-- Upload Cards Container -->
+        <div class="upload-cards-container">
+            <div class="container-fluid">
+                <div class="row" id="upload-cards-row">
+                    <!-- Cards will be dynamically generated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Legacy table (hidden by default) -->
+        <div class="col-12" style="display: none;">
+            <table class="table table-striped text-center" id="upload-table">
+            </table>
+        </div>
+
     </div>
-
-    </div>
-
 </div>
 
 <footer th:replace="mysnippets.html :: name_footer"></footer>

@@ -43,3 +43,179 @@ button {
     font-size: 14px;
 }
 
+/* Upload Page Styles */
+.upload-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+.upload-title {
+    font-size: 2rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #212529;
+}
+
+.upload-title i {
+    margin-right: 0.75rem;
+    color: #6c757d;
+}
+
+.upload-subtitle {
+    font-size: 1rem;
+    color: #6c757d;
+    max-width: 600px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.upload-cards-container {
+    padding: 0;
+}
+
+/* Upload Cards */
+.upload-card {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    box-shadow: none;
+    transition: border-color 0.2s ease;
+    overflow: hidden;
+    background-color: #ffffff;
+}
+
+.upload-card:hover {
+    border-color: #dee2e6;
+}
+
+.upload-card .card-header {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e9ecef;
+    padding: 1.25rem 1.5rem;
+}
+
+.upload-card .card-title {
+    color: #212529;
+    font-weight: 500;
+    font-size: 1.1rem;
+    margin-bottom: 0;
+}
+
+.upload-card .card-title i {
+    color: #6c757d;
+    margin-right: 0.5rem;
+}
+
+.upload-card .card-body {
+    padding: 1.5rem;
+}
+
+.upload-card .card-text {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.upload-card .card-footer {
+    background-color: #ffffff;
+    border-top: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+}
+
+/* Status Indicators */
+.status-indicator {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.status-icon {
+    cursor: pointer;
+}
+
+.status-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.status-failed {
+    background-color: #dc3545;
+    color: white;
+}
+
+.status-processing {
+    background-color: #007bff;
+    color: white;
+}
+
+.status-pending {
+    background-color: #6c757d;
+    color: white;
+}
+
+.status-text {
+    font-weight: 500;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #292c2f;
+}
+
+/* Action Buttons */
+.btn-upload,
+.btn-download {
+    border: 1px solid #dee2e6;
+    background-color: #ffffff;
+    color: #495057;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.btn-upload {
+    border-radius: 4px 0 0 4px;
+    border-right: none;
+}
+
+.btn-upload:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+    color: #212529;
+}
+
+.btn-download {
+    border-radius: 0 4px 4px 0;
+}
+
+.btn-download:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+    color: #212529;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .upload-title {
+        font-size: 1.75rem;
+    }
+
+    .upload-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .upload-header {
+        padding: 1.5rem 0;
+    }
+
+    .btn-group .btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+    }
+}
+

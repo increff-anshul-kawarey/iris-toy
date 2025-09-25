@@ -1,6 +1,9 @@
 package com.iris.increff.util;
 
-
+import com.iris.increff.model.Sales;
+import com.iris.increff.model.SKU;
+import com.iris.increff.model.Store;
+import com.iris.increff.model.Style;
 import org.apache.commons.io.FileUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -139,5 +142,78 @@ public class ProcessTsv {
         }
     }
 
+    // Data export methods for downloading actual database data
+    public static void createStylesDataResponse(List<Style> styles, HttpServletResponse response) throws IOException {
+        StringBuilder csvData = new StringBuilder();
+        csvData.append(String.join("\t", stylesHeaders)).append("\n");
+
+        for (Style style : styles) {
+            csvData.append(style.getStyleCode()).append("\t")
+                   .append(style.getBrand()).append("\t")
+                   .append(style.getCategory()).append("\t")
+                   .append(style.getSubCategory()).append("\t")
+                   .append(style.getMrp().toString()).append("\t")
+                   .append(style.getGender()).append("\n");
+        }
+
+        createCsvResponse(csvData.toString(), "styles_data.tsv", response);
+    }
+
+    public static void createStoresDataResponse(List<Store> stores, HttpServletResponse response) throws IOException {
+        StringBuilder csvData = new StringBuilder();
+        csvData.append(String.join("\t", storeHeaders)).append("\n");
+
+        for (Store store : stores) {
+            csvData.append(store.getBranch()).append("\t")
+                   .append(store.getCity()).append("\n");
+        }
+
+        createCsvResponse(csvData.toString(), "stores_data.tsv", response);
+    }
+
+    public static void createSkusDataResponse(List<SKU> skus, HttpServletResponse response) throws IOException {
+        StringBuilder csvData = new StringBuilder();
+        csvData.append(String.join("\t", skuHeaders)).append("\n");
+
+        for (SKU sku : skus) {
+            String styleCode = sku.getStyle() != null ? sku.getStyle().getStyleCode() : "";
+            csvData.append(sku.getSku()).append("\t")
+                   .append(styleCode).append("\t")
+                   .append(sku.getSize()).append("\n");
+        }
+
+        createCsvResponse(csvData.toString(), "skus_data.tsv", response);
+    }
+
+    public static void createSalesDataResponse(List<Sales> sales, HttpServletResponse response) throws IOException {
+        StringBuilder csvData = new StringBuilder();
+        csvData.append(String.join("\t", salesHeaders)).append("\n");
+
+        for (Sales sale : sales) {
+            String skuCode = sale.getSku() != null ? sale.getSku().getSku() : "";
+            String channel = sale.getStore() != null ? sale.getStore().getBranch() : "";
+            String day = sale.getDate() != null ? sale.getDate().toString() : "";
+
+            csvData.append(day).append("\t")
+                   .append(skuCode).append("\t")
+                   .append(channel).append("\t")
+                   .append(sale.getQuantity().toString()).append("\t")
+                   .append(sale.getDiscount().toString()).append("\t")
+                   .append(sale.getRevenue().toString()).append("\n");
+        }
+
+        createCsvResponse(csvData.toString(), "sales_data.tsv", response);
+    }
+
+    private static void createCsvResponse(String csvData, String fileName, HttpServletResponse response) throws IOException {
+        response.setContentType("text/tab-separated-values");
+        response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
+        response.setCharacterEncoding("UTF-8");
+
+        OutputStream os = response.getOutputStream();
+        os.write(csvData.getBytes("UTF-8"));
+        os.flush();
+        closeQuietly(os);
+    }
 
 }
