@@ -1,5 +1,8 @@
 package com.iris.increff.controller;
 
+import com.iris.increff.dao.TaskDao;
+import com.iris.increff.model.Task;
+import com.iris.increff.service.AsyncUploadService;
 import com.iris.increff.service.StyleService;
 import com.iris.increff.service.StoreService;
 import com.iris.increff.service.SkuService;
@@ -10,6 +13,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,6 +40,12 @@ public class FileController {
     
     @Autowired
     private SalesService salesService;
+
+    @Autowired
+    private AsyncUploadService asyncUploadService;
+
+    @Autowired
+    private TaskDao taskDao;
 
     @ApiOperation(value = "Upload Styles TSV")
     @RequestMapping(value = "/api/file/upload/styles", method = RequestMethod.POST)
@@ -262,6 +272,112 @@ public class FileController {
         status.put("count", count);
         status.put("exists", count > 0);
         return status;
+    }
+
+    // ==================== ASYNC UPLOAD ENDPOINTS ====================
+
+    @ApiOperation(value = "Upload Styles TSV (Async)")
+    @RequestMapping(value = "/api/file/upload/styles/async", method = RequestMethod.POST)
+    @Transactional
+    public ResponseEntity<Task> uploadStylesTsvAsync(@RequestPart("file") MultipartFile file) {
+        System.out.println("📁 SYSTEM.OUT: Async Styles upload requested: " + file.getOriginalFilename());
+        return processAsyncUpload(file, "STYLES_UPLOAD", 
+                                (taskId, fileContent, fileName) -> asyncUploadService.uploadStylesAsync(taskId, fileContent, fileName));
+    }
+
+    @ApiOperation(value = "Upload Stores TSV (Async)")
+    @RequestMapping(value = "/api/file/upload/stores/async", method = RequestMethod.POST)
+    @Transactional
+    public ResponseEntity<Task> uploadStoresTsvAsync(@RequestPart("file") MultipartFile file) {
+        System.out.println("📁 SYSTEM.OUT: Async Stores upload requested: " + file.getOriginalFilename());
+        return processAsyncUpload(file, "STORES_UPLOAD",
+                                (taskId, fileContent, fileName) -> asyncUploadService.uploadStoresAsync(taskId, fileContent, fileName));
+    }
+
+    @ApiOperation(value = "Upload SKUs TSV (Async)")
+    @RequestMapping(value = "/api/file/upload/skus/async", method = RequestMethod.POST)
+    @Transactional
+    public ResponseEntity<Task> uploadSkusTsvAsync(@RequestPart("file") MultipartFile file) {
+        System.out.println("📁 SYSTEM.OUT: Async SKUs upload requested: " + file.getOriginalFilename());
+        return processAsyncUpload(file, "SKUS_UPLOAD",
+                                (taskId, fileContent, fileName) -> asyncUploadService.uploadSkusAsync(taskId, fileContent, fileName));
+    }
+
+    @ApiOperation(value = "Upload Sales TSV (Async)")
+    @RequestMapping(value = "/api/file/upload/sales/async", method = RequestMethod.POST)
+    @Transactional
+    public ResponseEntity<Task> uploadSalesTsvAsync(@RequestPart("file") MultipartFile file) {
+        System.out.println("📁 SYSTEM.OUT: Async Sales upload requested: " + file.getOriginalFilename());
+        return processAsyncUpload(file, "SALES_UPLOAD",
+                                (taskId, fileContent, fileName) -> asyncUploadService.uploadSalesAsync(taskId, fileContent, fileName));
+    }
+
+    /**
+     * Generic async upload processing
+     * 
+     * @param file Uploaded file
+     * @param taskType Type of upload task
+     * @param processor Async processor function
+     * @return HTTP 202 with task details
+     */
+    private ResponseEntity<Task> processAsyncUpload(MultipartFile file, String taskType, AsyncProcessor processor) {
+        try {
+            // Read file content immediately (in controller thread)
+            byte[] fileContent = file.getBytes();
+            String fileName = file.getOriginalFilename();
+            
+            // Create task immediately
+            Task task = new Task();
+            task.setTaskType(taskType);
+            task.setStatus("PENDING");
+            task.setStartTime(new java.util.Date());
+            task.setUserId("system");
+            task.setFileName(fileName);
+            task.setParameters("fileName=" + fileName + ", fileSize=" + fileContent.length);
+            task.updateProgress(0.0, "PENDING", "Upload task created, waiting to start...");
+            
+            // Save task to get ID
+            taskDao.insert(task);
+            
+            // Start async processing with pre-read content
+            try {
+                processor.process(task.getId(), fileContent, fileName);
+                System.out.println("✅ SYSTEM.OUT: Async upload started with task ID: " + task.getId());
+                return ResponseEntity.accepted().body(task); // HTTP 202 Accepted
+            } catch (RuntimeException e) {
+                // Handle thread pool rejection
+                if (e.getMessage().contains("Thread pool queue is full")) {
+                    task.setStatus("FAILED");
+                    task.setErrorMessage("System is busy. Too many concurrent uploads. Please try again later.");
+                    taskDao.update(task);
+                    return ResponseEntity.status(429).body(task); // HTTP 429 Too Many Requests
+                }
+                throw e;
+            }
+            
+        } catch (Exception e) {
+            System.out.println("❌ SYSTEM.OUT: Failed to start async upload: " + e.getMessage());
+            
+            // Create error response with details
+            Task errorTask = new Task();
+            errorTask.setTaskType(taskType);
+            errorTask.setStatus("FAILED");
+            errorTask.setErrorMessage("Failed to start async upload: " + e.getMessage());
+            errorTask.setUserId("system");
+            errorTask.setFileName(file.getOriginalFilename());
+            errorTask.setStartTime(new java.util.Date());
+            errorTask.setEndTime(new java.util.Date());
+            
+            return ResponseEntity.status(500).body(errorTask);
+        }
+    }
+
+    /**
+     * Functional interface for async processing
+     */
+    @FunctionalInterface
+    private interface AsyncProcessor {
+        void process(Long taskId, byte[] fileContent, String fileName);
     }
 
 }

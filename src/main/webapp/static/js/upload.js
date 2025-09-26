@@ -49,56 +49,66 @@ function displayUploadList(data) {
 
 function createUploadCard(statusData, uploadFile) {
     var statusClass = '';
+    var statusTitle = '';
     var statusIcon = '';
-    var statusText = '';
-    var cardClass = 'upload-card';
+    var primaryMessage = '';
+    var secondaryMessage = '';
+    var cardClass = 'upload-card-modern';
 
     // Determine status based on data existence and count
-    if (statusData && statusData.exists) {
-        statusClass = 'status-success';
-        statusIcon = '<i class="fa fa-check status-icon"></i>';
-        statusText = statusData.count + ' records';
-        cardClass += ' card-success';
-    } else if (statusData && statusData.processing) {
+    // Processing takes priority over exists status
+    if (statusData && statusData.processing) {
         statusClass = 'status-processing';
-        statusIcon = '<i class="fa fa-spinner fa-spin status-icon"></i>';
-        statusText = 'Processing...';
+        statusTitle = 'Processing in progress';
+        statusIcon = '<div class="processing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+        primaryMessage = 'Your file is being processed';
+        secondaryMessage = 'Estimated time remaining: ~2 minutes';
         cardClass += ' card-processing';
     } else if (statusData && statusData.failed) {
-        statusClass = 'status-failed';
-        statusIcon = '<i class="fa fa-exclamation status-icon" onclick="downloadErrorFile(\''+uploadFile.id+'\')"></i>';
-        statusText = 'Upload Failed';
-        cardClass += ' card-failed';
+        statusClass = 'status-error';
+        statusTitle = 'Processing paused';
+        statusIcon = '<i class="fa fa-exclamation-triangle status-icon-large"></i>';
+        primaryMessage = 'Processing paused due to error';
+        secondaryMessage = 'Please check your file and try again';
+        cardClass += ' card-error';
+    } else if (statusData && statusData.exists) {
+        statusClass = 'status-success';
+        statusTitle = 'Processing completed';
+        statusIcon = '<i class="fa fa-check-circle status-icon-large"></i>';
+        primaryMessage = 'Your file is ready';
+        secondaryMessage = statusData.count + ' records uploaded successfully';
+        cardClass += ' card-success';
     } else {
         statusClass = 'status-pending';
-        statusIcon = '<i class="fa fa-circle-o status-icon"></i>';
-        statusText = 'No data';
+        statusTitle = 'Ready for upload';
+        statusIcon = '<i class="fa fa-upload status-icon-large"></i>';
+        primaryMessage = 'Upload your data file';
+        secondaryMessage = 'Click upload to get started';
         cardClass += ' card-pending';
     }
 
-    var cardHtml = '<div class="col-lg-6 col-xl-4 mb-4">' +
-        '<div class="card ' + cardClass + ' h-100">' +
-            '<div class="card-header">' +
-                '<div class="d-flex justify-content-between align-items-center">' +
-                    '<h5 class="card-title mb-0">' +
-                        '<i class="fa ' + getFileIcon(uploadFile.id) + ' mr-2"></i>' +
-                        uploadFile["Display Name"] +
-                    '</h5>' +
-                    '<div class="status-indicator ' + statusClass + '">' +
-                        statusIcon +
-                    '</div>' +
+    var cardHtml = '<div class="col-md-6 mb-4">' +
+        '<div class="card ' + cardClass + '">' +
+            // Header area
+            '<div class="card-header-modern ' + statusClass + '">' +
+                '<span class="status-title">' + statusTitle + '</span>' +
+            '</div>' +
+            // Main content area
+            '<div class="card-body-modern">' +
+                '<div class="file-type-label">' + uploadFile["Display Name"] + '</div>' +
+                '<div class="status-indicator-modern">' +
+                    statusIcon +
                 '</div>' +
+                '<div class="primary-message">' + primaryMessage + '</div>' +
+                '<div class="secondary-message">' + secondaryMessage + '</div>' +
             '</div>' +
-            '<div class="card-body">' +
-                '<p class="card-text">' + uploadFile.Description + '</p>' +
-                '<div class="status-text ' + statusClass + '">' + statusText + '</div>' +
-            '</div>' +
-            '<div class="card-footer">' +
-                '<div class="btn-group w-100" role="group">' +
-                    '<button type="button" class="btn btn-upload" onclick="uploadModal(\''+uploadFile.id+'\',\''+uploadFile["Display Name"]+'\')">' +
-                        'Upload' +
+            // Action area
+            '<div class="card-footer-modern">' +
+                '<div class="action-buttons">' +
+                    '<button type="button" class="btn btn-primary-modern" onclick="uploadModal(\''+uploadFile.id+'\',\''+uploadFile["Display Name"]+'\')">' +
+                        (statusData && statusData.failed ? 'Retry Upload' : 'Upload File') +
                     '</button>' +
-                    '<button type="button" class="btn btn-download" onclick="downloadDataFile(\''+uploadFile.id+'\')" ' + (statusData && statusData.exists ? '' : 'disabled') + '>' +
+                    '<button type="button" class="btn btn-secondary-modern" onclick="downloadDataFile(\''+uploadFile.id+'\')" ' + (statusData && statusData.exists ? '' : 'disabled') + '>' +
                         'Download Data' +
                     '</button>' +
                 '</div>' +

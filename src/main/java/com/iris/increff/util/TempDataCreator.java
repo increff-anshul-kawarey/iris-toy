@@ -5,7 +5,10 @@ import com.iris.increff.model.DashBoardData;
 import com.iris.increff.model.Report1Data;
 import com.iris.increff.model.Report2Data;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class TempDataCreator {
@@ -49,11 +52,29 @@ public class TempDataCreator {
 
     public static AlgoParametersData getAlgoParameters() {
         AlgoParametersData algoParametersData = new AlgoParametersData();
-        algoParametersData.setParameter1(1.00);
-        algoParametersData.setParameter2(2.00);
-        algoParametersData.setParameter3(3.00);
-        algoParametersData.setParameter4(4.00);
-        algoParametersData.setParameter5("22-01-2022");
+
+        // NOOS Algorithm Parameters (calibrated for synthetic data)
+        algoParametersData.setParameter1(0.25);  // Liquidation threshold: 25% discount
+        algoParametersData.setParameter2(1.20);  // Bestseller multiplier: 1.2x category average
+        algoParametersData.setParameter3(25.00); // Min volume: 25 units
+        algoParametersData.setParameter4(0.75);  // Consistency threshold: 75%
+        algoParametersData.setParameter5("default_config");
+
+        // Date Analysis Parameters (based on dataset: 2018-12-31 to 2019-06-23)
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            algoParametersData.setAnalysisStartDate(dateFormat.parse("2019-01-01"));
+            algoParametersData.setAnalysisEndDate(dateFormat.parse("2019-06-23"));
+            algoParametersData.setCoreDurationMonths(6);      // Full dataset period
+            algoParametersData.setBestsellerDurationDays(90); // Last 3 months
+        } catch (ParseException e) {
+            // Fallback if date parsing fails
+            algoParametersData.setAnalysisStartDate(new Date());
+            algoParametersData.setAnalysisEndDate(new Date());
+            algoParametersData.setCoreDurationMonths(3);
+            algoParametersData.setBestsellerDurationDays(30);
+        }
+
         return algoParametersData;
     }
 

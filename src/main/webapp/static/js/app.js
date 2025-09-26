@@ -207,15 +207,26 @@ console.log(id)
 console.log(name)
 	var modal = $('#upload-data-form');
 	modal.empty();
-	messageTag ='<div class="modal-body" id="upload-form-body">'
-	           +'<div><strong>Upload : </strong>'+name+ '</div>'
-               +'<input type="file" id="file" name="file" onclick="resetButtons()" required><br>'
-               +'<a href="#" onclick="downloadInputFileTemplate(\''+id+'\')">Download Template</a><br>'
-               +'</div>'
-               +'<div class="modal-footer" >'
-               +'<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>'
-               +'<button type="submit" class="btn btn-primary" id="upload-sales" onclick="upload(\''+id+'\')">Upload</button>'
-               +'<div id="modal-footer"></div>'
+	messageTag ='<div class="modal-body-modern">'
+	           +'<div class="upload-modal-header">'
+	           +'<button type="button" class="modal-close-btn" data-dismiss="modal" aria-label="Close">'
+	           +'<span aria-hidden="true">&times;</span>'
+	           +'</button>'
+	           +'<h3 class="upload-modal-title">Upload '+name+'</h3>'
+	           +'</div>'
+	           +'<div class="upload-modal-content">'
+	           +'<div class="file-input-section">'
+	           +'<div class="file-input-wrapper">'
+	           +'<input type="file" id="file" name="file" onclick="resetButtons()" required>'
+	           +'<label for="file" class="file-input-label">Choose file to upload</label>'
+	           +'</div>'
+	           +'</div>'
+	           +'</div>'
+	           +'<div class="upload-modal-actions">'
+	           +'<button type="submit" class="btn btn-primary-modern" id="upload-sales" onclick="upload(\''+id+'\')">Upload File</button>'
+	           +'<button type="button" class="btn btn-secondary-modern" data-dismiss="modal">Cancel</button>'
+	           +'</div>'
+	           +'<div id="modal-footer"></div>'
 	modal.append(messageTag)
 	$('#upload-modal').modal('toggle');
 }

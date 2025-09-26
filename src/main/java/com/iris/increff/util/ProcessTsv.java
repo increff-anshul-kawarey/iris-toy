@@ -1,5 +1,6 @@
 package com.iris.increff.util;
 
+import com.iris.increff.model.NoosResult;
 import com.iris.increff.model.Sales;
 import com.iris.increff.model.SKU;
 import com.iris.increff.model.Store;
@@ -13,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -203,6 +205,45 @@ public class ProcessTsv {
         }
 
         createCsvResponse(csvData.toString(), "sales_data.tsv", response);
+    }
+
+    /**
+     * Create NOOS Results TSV for download
+     * 
+     * PRD Requirement: "TSV file download for algorithm results"
+     * Output Format: Category | Style Code | Style ROS | Type | Style Rev Contri
+     * 
+     * @param results List of NOOS results
+     * @param response HTTP response for file download
+     * @throws IOException if file creation fails
+     */
+    public static void createNoosResultsTsv(List<NoosResult> results, HttpServletResponse response) throws IOException {
+        StringBuilder csvData = new StringBuilder();
+        
+        // Add header (PRD specified format)
+        csvData.append("Category\tStyle Code\tStyle ROS\tType\tStyle Rev Contri\tTotal Quantity\tTotal Revenue\tDays Available\tDays With Sales\tAvg Discount\tCalculated Date\n");
+        
+        // Add data rows
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        for (NoosResult result : results) {
+            csvData.append(result.getCategory()).append("\t")
+                   .append(result.getStyleCode()).append("\t")
+                   .append(result.getStyleROS()).append("\t")
+                   .append(result.getType()).append("\t")
+                   .append(result.getStyleRevContribution()).append("\t")
+                   .append(result.getTotalQuantitySold()).append("\t")
+                   .append(result.getTotalRevenue()).append("\t")
+                   .append(result.getDaysAvailable()).append("\t")
+                   .append(result.getDaysWithSales()).append("\t")
+                   .append(result.getAvgDiscount()).append("\t")
+                   .append(dateFormat.format(result.getCalculatedDate())).append("\n");
+        }
+        
+        // Generate filename with timestamp
+        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+        String fileName = "noos_results_" + timestamp + ".tsv";
+        
+        createCsvResponse(csvData.toString(), fileName, response);
     }
 
     private static void createCsvResponse(String csvData, String fileName, HttpServletResponse response) throws IOException {

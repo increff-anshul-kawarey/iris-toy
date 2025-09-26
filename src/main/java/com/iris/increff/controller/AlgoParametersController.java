@@ -1,39 +1,158 @@
 package com.iris.increff.controller;
 
+import com.iris.increff.dao.AlgorithmParametersDao;
+import com.iris.increff.model.AlgorithmParameters;
 import com.iris.increff.model.AlgoParametersData;
-import com.iris.increff.util.ApiException;
-import com.iris.increff.util.TempDataCreator;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Api
 @RestController
 public class AlgoParametersController {
 
+    private static final Logger logger = LoggerFactory.getLogger(AlgoParametersController.class);
 
-    @ApiOperation(value = "Gets list of parameters")
+    @Autowired
+    private AlgorithmParametersDao algorithmParametersDao;
+
+    @ApiOperation(value = "Get current algorithm parameters")
     @RequestMapping(path = "/api/algo", method = RequestMethod.GET)
-    public AlgoParametersData getAll() {
-        System.out.println("Fetch Algo Parameter  Successfully");
-        return TempDataCreator.getAlgoParameters();
+    public ResponseEntity<AlgoParametersData> getCurrentParameters() {
+        try {
+            AlgorithmParameters params = algorithmParametersDao.getDefaultParameters();
+            AlgoParametersData data = params.toAlgoParametersData();
+            logger.info("✅ Retrieved algorithm parameters: {}", params.getParameterSet());
+            return ResponseEntity.ok(data);
+        } catch (Exception e) {
+            logger.error("❌ Failed to retrieve algorithm parameters: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).build();
+        }
     }
 
-    @ApiOperation(value = "update parameter")
+    @ApiOperation(value = "Update algorithm parameters")
     @RequestMapping(path = "/api/algo", method = RequestMethod.PUT)
-    public AlgoParametersData addParams(@RequestBody AlgoParametersData algoParametersData) throws ApiException {
-        System.out.println("Algo Parameter Updated Successfully");
-        System.out.println(algoParametersData.getParameter1());
-        System.out.println(algoParametersData.getParameter2());
-        System.out.println(algoParametersData.getParameter3());
-        System.out.println(algoParametersData.getParameter4());
-        System.out.println(algoParametersData.getParameter5());
-        return algoParametersData;
+    public ResponseEntity<AlgoParametersData> updateParameters(@RequestBody AlgoParametersData algoParametersData) {
+        try {
+            logger.info("🔄 Updating algorithm parameters");
 
+            // Get or create default parameter set
+            AlgorithmParameters params = algorithmParametersDao.getDefaultParameters();
+
+            // Update from request data
+            params.updateFromAlgoParametersData(algoParametersData, "system");
+
+            // Save to database
+            algorithmParametersDao.save(params);
+
+            logger.info("✅ Algorithm parameters updated successfully");
+            return ResponseEntity.ok(params.toAlgoParametersData());
+
+        } catch (Exception e) {
+            logger.error("❌ Failed to update algorithm parameters: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).build();
+        }
     }
 
+    @ApiOperation(value = "Get all parameter sets")
+    @RequestMapping(path = "/api/algo/sets", method = RequestMethod.GET)
+    public ResponseEntity<List<AlgoParametersData>> getAllParameterSets() {
+        try {
+            List<AlgorithmParameters> paramSets = algorithmParametersDao.findAllActive();
+            List<AlgoParametersData> dataList = paramSets.stream()
+                    .map(AlgorithmParameters::toAlgoParametersData)
+                    .collect(Collectors.toList());
 
+            logger.info("✅ Retrieved {} parameter sets", dataList.size());
+            return ResponseEntity.ok(dataList);
+
+        } catch (Exception e) {
+            logger.error("❌ Failed to retrieve parameter sets: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @ApiOperation(value = "Create new parameter set")
+    @RequestMapping(path = "/api/algo/sets", method = RequestMethod.POST)
+    public ResponseEntity<AlgoParametersData> createParameterSet(
+            @RequestBody AlgoParametersData algoParametersData,
+            @RequestParam String parameterSetName) {
+
+        try {
+            logger.info("🔄 Creating new parameter set: {}", parameterSetName);
+
+            // Check if parameter set already exists
+            AlgorithmParameters existing = algorithmParametersDao.findByParameterSet(parameterSetName);
+            if (existing != null) {
+                logger.warn("⚠️ Parameter set '{}' already exists", parameterSetName);
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Create new parameter set
+            AlgorithmParameters params = new AlgorithmParameters();
+            params.setParameterSet(parameterSetName);
+            params.setIsActive(true);
+            params.updateFromAlgoParametersData(algoParametersData, "system");
+
+            // Save to database
+            algorithmParametersDao.save(params);
+
+            logger.info("✅ Created new parameter set: {}", parameterSetName);
+            return ResponseEntity.ok(params.toAlgoParametersData());
+
+        } catch (Exception e) {
+            logger.error("❌ Failed to create parameter set: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @ApiOperation(value = "Get specific parameter set")
+    @RequestMapping(path = "/api/algo/sets/{parameterSetName}", method = RequestMethod.GET)
+    public ResponseEntity<AlgoParametersData> getParameterSet(@PathVariable String parameterSetName) {
+        try {
+            AlgorithmParameters params = algorithmParametersDao.findByParameterSet(parameterSetName);
+            if (params == null) {
+                logger.warn("⚠️ Parameter set '{}' not found", parameterSetName);
+                return ResponseEntity.notFound().build();
+            }
+
+            logger.info("✅ Retrieved parameter set: {}", parameterSetName);
+            return ResponseEntity.ok(params.toAlgoParametersData());
+
+        } catch (Exception e) {
+            logger.error("❌ Failed to retrieve parameter set '{}': {}", parameterSetName, e.getMessage(), e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @ApiOperation(value = "Reset to default parameters")
+    @RequestMapping(path = "/api/algo/reset", method = RequestMethod.POST)
+    public ResponseEntity<AlgoParametersData> resetToDefaults() {
+        try {
+            logger.info("🔄 Resetting parameters to defaults");
+
+            // Delete existing default parameters (they will be recreated)
+            AlgorithmParameters existing = algorithmParametersDao.findByParameterSet("default");
+            if (existing != null) {
+                algorithmParametersDao.deactivateParameterSet("default");
+            }
+
+            // Get new defaults (will be created automatically)
+            AlgorithmParameters defaults = algorithmParametersDao.getDefaultParameters();
+
+            logger.info("✅ Parameters reset to defaults");
+            return ResponseEntity.ok(defaults.toAlgoParametersData());
+
+        } catch (Exception e) {
+            logger.error("❌ Failed to reset parameters: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).build();
+        }
+    }
 }
