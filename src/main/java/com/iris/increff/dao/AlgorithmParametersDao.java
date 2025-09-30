@@ -2,6 +2,7 @@ package com.iris.increff.dao;
 
 import com.iris.increff.model.AlgorithmParameters;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -26,6 +27,7 @@ public class AlgorithmParametersDao {
     /**
      * Save or update algorithm parameters
      */
+    @Transactional
     public AlgorithmParameters save(AlgorithmParameters parameters) {
         if (parameters.getId() == null) {
             entityManager.persist(parameters);
@@ -63,42 +65,54 @@ public class AlgorithmParametersDao {
     /**
      * Get default parameters (fallback if no parameter set exists)
      */
+    @Transactional
     public AlgorithmParameters getDefaultParameters() {
-        AlgorithmParameters defaultParams = findByParameterSet("default");
+        try {
+            AlgorithmParameters defaultParams = findByParameterSet("default");
 
-        if (defaultParams == null) {
-            // Create default parameters if they don't exist
-            defaultParams = new AlgorithmParameters();
-            defaultParams.setParameterSet("default");
-            defaultParams.setLiquidationThreshold(0.25);
-            defaultParams.setBestsellerMultiplier(1.20);
-            defaultParams.setMinVolumeThreshold(25.0);
-            defaultParams.setConsistencyThreshold(0.75);
-            defaultParams.setDescription("Default NOOS parameters");
-            defaultParams.setCoreDurationMonths(6);
-            defaultParams.setBestsellerDurationDays(90);
-            defaultParams.setIsActive(true);
+            if (defaultParams == null) {
+                // Create default parameters if they don't exist
+                defaultParams = new AlgorithmParameters();
+                defaultParams.setParameterSet("default");
+                defaultParams.setLiquidationThreshold(0.25);
+                defaultParams.setBestsellerMultiplier(1.20);
+                defaultParams.setMinVolumeThreshold(25.0);
+                defaultParams.setConsistencyThreshold(0.75);
+                defaultParams.setDescription("Default NOOS parameters");
+                defaultParams.setCoreDurationMonths(6);
+                defaultParams.setBestsellerDurationDays(90);
+                defaultParams.setIsActive(true);
 
-            // Set reasonable date range based on data
-            try {
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
-                defaultParams.setAnalysisStartDate(sdf.parse("2019-01-01"));
-                defaultParams.setAnalysisEndDate(sdf.parse("2019-06-23"));
-            } catch (Exception e) {
-                // Use current date as fallback
-                defaultParams.setAnalysisStartDate(new java.util.Date());
-                defaultParams.setAnalysisEndDate(new java.util.Date());
+                // Set reasonable date range based on data
+                try {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
+                    defaultParams.setAnalysisStartDate(sdf.parse("2019-01-01"));
+                    defaultParams.setAnalysisEndDate(sdf.parse("2019-06-23"));
+                } catch (Exception e) {
+                    // Use current date as fallback
+                    defaultParams.setAnalysisStartDate(new java.util.Date());
+                    defaultParams.setAnalysisEndDate(new java.util.Date());
+                }
+
+                // Persist and flush to ensure it's saved immediately
+                entityManager.persist(defaultParams);
+                entityManager.flush();
+                
+                System.out.println("✅ Created default algorithm parameters in database");
             }
 
-            entityManager.persist(defaultParams);
+            return defaultParams;
+        } catch (Exception e) {
+            System.err.println("❌ Error in getDefaultParameters: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to get default parameters", e);
         }
-
-        return defaultParams;
     }
 
     /**
      * Soft delete parameter set
      */
+    @Transactional
     public void deactivateParameterSet(String parameterSet) {
         AlgorithmParameters params = findByParameterSet(parameterSet);
         if (params != null) {

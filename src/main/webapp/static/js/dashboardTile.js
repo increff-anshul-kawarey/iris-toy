@@ -3,20 +3,39 @@ function fill1stTile()
 {
 	var tile = $('#firstTile');
 	tile.empty();
-	tileTag ='<div class="card bg-primary text-white h-100"><div class="card-body text-center py-1 mt-2" >'
-	          +'<h5>Tile '+tileData.dashBoardTile1+' </h5><text>lorem ipsum</text><br><br><br></div><a href="#"  class="text-white" onclick="showCard1Detail()"><div class="card-footer d-flex">'
-             +'View Details<span class="ms-auto"><i class="bi bi-chevron-right"></i></span></div></a></div>'
+	// Tile 1: Sales Data Records
+	var salesCount = tileData.totalSalesRecords ? tileData.totalSalesRecords.toLocaleString() : tileData.dashBoardTile1;
+	var salesStatus = tileData.salesDataStatus || 'Data Records';
+	tileTag ='<div class="card bg-primary text-white h-100 d-flex flex-column">'
+	          +'<div class="card-body text-center py-3 flex-grow-1 d-flex flex-column justify-content-center">'
+	          +'<div class="mb-2"><i class="fa fa-database fa-2x"></i></div>'
+	          +'<h2>'+salesCount+'</h2><h6>Sales Records</h6>'
+	          +'<small class="opacity-75">'+salesStatus+'</small></div>'
+	          +'<div class="card-footer bg-transparent border-0 text-center pt-0">'
+	          +'<div class="small mb-2 opacity-75">Last updated: '+formatCurrentDate()+'</div>'
+	          +'<a href="#" class="text-white text-decoration-none" onclick="showCard1Detail()">'
+	          +'<div class="d-flex justify-content-between align-items-center">'
+             +'<span>View Details</span><i class="fa fa-chevron-right"></i></div></a></div></div>'
 	tile.append(tileTag)
 }
 function fill2ndTile()
 {
     	var tile = $('#secondTile');
     	tile.empty();
-    	tileTag ='<div class="card bg-warning text-dark h-100"><div class="card-body text-center py-1 mt-2" >'
-    	         +'<h2> '+tileData.dashBoardTile2+'%</h2>'
-                 +'lorem ipsum<br>'
-                 +'<strong>10 % </strong> lorem ipsum.</div><a href="#"  class="text-dark" onclick="showCard2Detail()"><div class="card-footer d-flex">'
-                 +'View Details<span class="ms-auto"><i class="bi bi-chevron-right"></i></span></div></a></div>'
+    	// Tile 2: Master Data (SKUs + Stores + Styles)
+    	var totalMaster = (tileData.totalSkus || 0) + (tileData.totalStores || 0) + (tileData.totalStyles || 0);
+    	var masterStatus = tileData.masterDataStatus || 'Master Data';
+    	var masterCount = totalMaster > 0 ? totalMaster.toLocaleString() : (tileData.dashBoardTile2 || 0);
+    	tileTag ='<div class="card bg-success text-white h-100 d-flex flex-column">'
+    	         +'<div class="card-body text-center py-3 flex-grow-1 d-flex flex-column justify-content-center">'
+    	         +'<div class="mb-2"><i class="fa fa-cubes fa-2x"></i></div>'
+    	         +'<h2>'+masterCount+'</h2><h6>Master Records</h6>'
+    	         +'<small class="opacity-75">'+masterStatus+'</small></div>'
+                 +'<div class="card-footer bg-transparent border-0 text-center pt-0">'
+                 +'<div class="small mb-2 opacity-75">Last updated: '+formatCurrentDate()+'</div>'
+                 +'<a href="#" class="text-white text-decoration-none" onclick="showCard2Detail()">'
+                 +'<div class="d-flex justify-content-between align-items-center">'
+                 +'<span>View Details</span><i class="fa fa-chevron-right"></i></div></a></div></div>'
     	tile.append(tileTag)
 
 }
@@ -24,10 +43,20 @@ function fill3rdTile()
 {
             var tile = $('#thirdTile');
             tile.empty();
-            tileTag ='<div class="card bg-success text-white h-100"><div class="card-body text-center py-1 mt-2" >'
-                    +'<h2>'+tileData.dashBoardTile3+'</h2>'
-                    +'<strong><p>lorem ipsum</p></strong></div><a href="#"  class="text-white" onclick="showCard3Detail()"><div class="card-footer d-flex">'
-                       +'View Details<span class="ms-auto"><i class="bi bi-chevron-right"></i></span></div></a></div>'
+            // Tile 3: Recent Upload Activity
+            var recentUploads = tileData.recentUploads || tileData.dashBoardTile3 || 0;
+            var successRate = tileData.uploadSuccessRate || 0;
+            var activityStatus = tileData.recentActivityStatus || 'Recent Activity';
+            tileTag ='<div class="card bg-info text-white h-100 d-flex flex-column">'
+                    +'<div class="card-body text-center py-3 flex-grow-1 d-flex flex-column justify-content-center">'
+                    +'<div class="mb-2"><i class="fa fa-upload fa-2x"></i></div>'
+                    +'<h2>'+recentUploads+'</h2><h6>Recent Uploads</h6>'
+                    +'<small class="opacity-75">'+Math.round(successRate)+'% success rate</small></div>'
+                    +'<div class="card-footer bg-transparent border-0 text-center pt-0">'
+                    +'<div class="small mb-2 opacity-75">Last updated: '+formatCurrentDate()+'</div>'
+                    +'<a href="#" class="text-white text-decoration-none" onclick="showCard3Detail()">'
+                    +'<div class="d-flex justify-content-between align-items-center">'
+                       +'<span>View Details</span><i class="fa fa-chevron-right"></i></div></a></div></div>'
             tile.append(tileTag)
 
 }
@@ -35,25 +64,53 @@ function fill4thTile()
 {
             var tile = $('#fourthtile');
             tile.empty();
-            tileTag ='<div class="card bg-danger text-white h-100"><div class="card-body text-center py-1 mt-2" >'
-                    +'<h2>'+tileData.dashBoardTile4+'</h2>'
-                    +'<strong><p>lorem ipsum</p></strong></div><a href="#"  class="text-white" onclick="showCard4Detail()"><div class="card-footer d-flex">'
-                       +'View Details<span class="ms-auto"><i class="bi bi-chevron-right"></i></span></div></a></div>'
+            // Tile 4: Processing Status
+            var activeTasks = tileData.activeTasks || 0;
+            var pendingTasks = tileData.pendingTasks || 0;
+            var totalTasks = activeTasks + pendingTasks;
+            var processingStatus = tileData.processingStatus || 'Processing Status';
+            var displayCount = totalTasks > 0 ? totalTasks : (tileData.dashBoardTile4 || 0);
+            tileTag ='<div class="card bg-warning text-dark h-100 d-flex flex-column">'
+                    +'<div class="card-body text-center py-3 flex-grow-1 d-flex flex-column justify-content-center">'
+                    +'<div class="mb-2"><i class="fa fa-cogs fa-2x"></i></div>'
+                    +'<h2>'+displayCount+'</h2><h6>Active Tasks</h6>'
+                    +'<small class="opacity-75">'+processingStatus+'</small></div>'
+                    +'<div class="card-footer bg-transparent border-0 text-center pt-0">'
+                    +'<div class="small mb-2 opacity-75">Last updated: '+formatCurrentDate()+'</div>'
+                    +'<a href="#" class="text-dark text-decoration-none" onclick="showCard4Detail()">'
+                    +'<div class="d-flex justify-content-between align-items-center">'
+                       +'<span>View Details</span><i class="fa fa-chevron-right"></i></div></a></div></div>'
             tile.append(tileTag)
 }
 function showCard1Detail() {
 	var modal = $('#message-modal-body');
 	modal.empty();
-    messageTag ='<text>Your Message for 1 Tile</text><br>'
+	// Sales Data Details
+	var salesCount = tileData.totalSalesRecords ? tileData.totalSalesRecords.toLocaleString() : 'N/A';
+	var salesStatus = tileData.salesDataStatus || 'Data unavailable';
+    messageTag ='<h5><i class="fa fa-database"></i> Sales Data Overview</h5>'
+              +'<div><strong>Total Sales Records: </strong>' + salesCount + '</div>'
+              +'<div><strong>Status: </strong>' + salesStatus + '</div>'
+              +'<hr><p class="text-muted">Sales data is essential for NOOS algorithm analysis. '
+              +'More data typically leads to better classification accuracy.</p>'
 	modal.append(messageTag)
 	$('#message-modal').modal('toggle');
 }
 function showCard2Detail() {
 	var modal = $('#message-modal-body');
 	modal.empty();
-	messageTag = '<div><strong>Anything : </strong> abc </div>'
-	            +'<div><strong>Anything : </strong> abc </div>'
-	            +'<div><strong>Anything : </strong> abc </div>'
+	// Master Data Details
+	var totalSkus = tileData.totalSkus || 0;
+	var totalStores = tileData.totalStores || 0;
+	var totalStyles = tileData.totalStyles || 0;
+	var masterStatus = tileData.masterDataStatus || 'Setup required';
+	messageTag = '<h5><i class="fa fa-cubes"></i> Master Data Breakdown</h5>'
+	            +'<div><strong>SKUs: </strong>' + totalSkus.toLocaleString() + '</div>'
+	            +'<div><strong>Stores: </strong>' + totalStores.toLocaleString() + '</div>'
+	            +'<div><strong>Styles: </strong>' + totalStyles.toLocaleString() + '</div>'
+	            +'<div><strong>Status: </strong>' + masterStatus + '</div>'
+	            +'<hr><p class="text-muted">Complete master data ensures accurate sales analysis '
+	            +'and proper NOOS algorithm functionality.</p>'
 
 	modal.append(messageTag)
 	$('#message-modal').modal('toggle');
@@ -61,16 +118,32 @@ function showCard2Detail() {
 function showCard3Detail() {
 	var modal = $('#message-modal-body');
 	modal.empty();
-	messageTag = '<div><strong>Anything : </strong> abc </div>'
-	            +'<div><strong>Anything : </strong> abc </div>'
-	            +'<div><strong>Anything : </strong> abc </div>'
+	// Recent Activity Details
+	var recentUploads = tileData.recentUploads || 0;
+	var successRate = tileData.uploadSuccessRate || 0;
+	var activityStatus = tileData.recentActivityStatus || 'No recent activity';
+	messageTag = '<h5><i class="fa fa-upload"></i> Recent Upload Activity (Last 7 Days)</h5>'
+	            +'<div><strong>Total Uploads: </strong>' + recentUploads + '</div>'
+	            +'<div><strong>Success Rate: </strong>' + Math.round(successRate) + '%</div>'
+	            +'<div><strong>Status: </strong>' + activityStatus + '</div>'
+	            +'<hr><p class="text-muted">Monitor upload activity to ensure data freshness '
+	            +'for optimal algorithm performance.</p>'
 	modal.append(messageTag)
 	$('#message-modal').modal('toggle');
 }
 function showCard4Detail() {
 	var modal = $('#message-modal-body');
 	modal.empty();
-    messageTag ='<text>Your Message for 4 Tile</text><br>'
+	// Processing Status Details
+	var activeTasks = tileData.activeTasks || 0;
+	var pendingTasks = tileData.pendingTasks || 0;
+	var processingStatus = tileData.processingStatus || 'System idle';
+    messageTag ='<h5><i class="fa fa-cogs"></i> Processing Status</h5>'
+              +'<div><strong>Active Tasks: </strong>' + activeTasks + '</div>'
+              +'<div><strong>Pending Tasks: </strong>' + pendingTasks + '</div>'
+              +'<div><strong>System Status: </strong>' + processingStatus + '</div>'
+              +'<hr><p class="text-muted">Track system processing load and task queue status '
+              +'to monitor system health.</p>'
 	modal.append(messageTag)
 	$('#message-modal').modal('toggle');
 }
@@ -88,6 +161,14 @@ function fillTiles()
     url=getRunUrl()+"/updates";
     ajaxRestApiCallWithoutData(url,'GET', setTilesData);
 }
+/**
+ * Format current date for display in tiles
+ */
+function formatCurrentDate() {
+    var now = new Date();
+    return now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}
+
 //figure out when you want tiles data to be refreshed
 $(document).ready(fillTiles)
 

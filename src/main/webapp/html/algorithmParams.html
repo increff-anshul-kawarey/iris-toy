@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <head th:replace="mysnippets.html :: name_head"></head>
+</head>
+<body>
+<header th:replace="mysnippets.html :: name_header"></header>
+<div th:replace="mysnippets.html :: common_modals"></div>
+
+<div class="row" id="body-row">
+    <div th:replace="mysnippets.html :: side_bar"></div>
+    <div class="col">
+        <!-- Algorithm Parameters Header -->
+        <div class="upload-header">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-12">
+                        <h1 class="upload-title">
+                            <i class="fa fa-cogs"></i>
+                            NOOS Algorithm Parameters
+                        </h1>
+                        <p class="upload-subtitle">
+                            Configure Never Out Of Stock algorithm parameters and analysis settings
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parameters Form Container -->
+        <div class="upload-cards-container">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-lg-8 col-md-10 col-12 mx-auto">
+                        <!-- Current Parameters Card -->
+                        <div class="upload-card-modern mb-4">
+                            <div class="card-header-modern status-pending">
+                                <div class="status-title">
+                                    <i class="fa fa-sliders-h"></i>
+                                    Current Algorithm Parameters
+                                </div>
+                            </div>
+                            <div class="card-body-modern" style="min-height: auto; padding: 2rem 1.5rem;">
+                            <form id="algorithmParamsForm">
+                                <!-- NOOS Algorithm Parameters Section -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h6 class="text-primary border-bottom pb-2">
+                                            <i class="fa fa-calculator"></i>
+                                            NOOS Classification Parameters
+                                        </h6>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Liquidation Threshold -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="liquidationThreshold" class="form-label">
+                                            <strong>Liquidation Threshold</strong>
+                                            <small class="text-muted d-block">Discount % above which sales are excluded from analysis</small>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="liquidationThreshold" 
+                                                   name="liquidationThreshold" step="0.01" min="0" max="1" 
+                                                   placeholder="0.25" required>
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <small class="form-text text-muted">Example: 0.25 = 25% discount threshold</small>
+                                    </div>
+
+                                    <!-- Bestseller Multiplier -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="bestsellerMultiplier" class="form-label">
+                                            <strong>Bestseller Multiplier</strong>
+                                            <small class="text-muted d-block">Revenue multiplier for bestseller classification</small>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="bestsellerMultiplier" 
+                                                   name="bestsellerMultiplier" step="0.1" min="1" max="5" 
+                                                   placeholder="1.2" required>
+                                            <span class="input-group-text">x</span>
+                                        </div>
+                                        <small class="form-text text-muted">Example: 1.2 = 120% of category average</small>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Min Volume Threshold -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="minVolumeThreshold" class="form-label">
+                                            <strong>Minimum Volume Threshold</strong>
+                                            <small class="text-muted d-block">Minimum units sold for classification</small>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="minVolumeThreshold" 
+                                                   name="minVolumeThreshold" step="1" min="1" max="1000" 
+                                                   placeholder="25" required>
+                                            <span class="input-group-text">units</span>
+                                        </div>
+                                        <small class="form-text text-muted">Styles below this volume are classified as Fashion</small>
+                                    </div>
+
+                                    <!-- Consistency Threshold -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="consistencyThreshold" class="form-label">
+                                            <strong>Consistency Threshold</strong>
+                                            <small class="text-muted d-block">% of days with sales for Core classification</small>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="consistencyThreshold" 
+                                                   name="consistencyThreshold" step="0.01" min="0" max="1" 
+                                                   placeholder="0.75" required>
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <small class="form-text text-muted">Example: 0.75 = 75% of available days</small>
+                                    </div>
+                                </div>
+
+                                <!-- Algorithm Label -->
+                                <div class="row">
+                                    <div class="col-12 mb-3">
+                                        <label for="algorithmLabel" class="form-label">
+                                            <strong>Algorithm Label</strong>
+                                            <small class="text-muted d-block">Description for this parameter set</small>
+                                        </label>
+                                        <input type="text" class="form-control" id="algorithmLabel" 
+                                               name="algorithmLabel" placeholder="e.g., default_config, seasonal_2024" 
+                                               maxlength="100" required>
+                                    </div>
+                                </div>
+
+                                <!-- Date Analysis Parameters Section -->
+                                <div class="row mb-4 mt-4">
+                                    <div class="col-12">
+                                        <h6 class="text-primary border-bottom pb-2">
+                                            <i class="fa fa-calendar"></i>
+                                            Analysis Period Settings
+                                        </h6>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Analysis Start Date -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="analysisStartDate" class="form-label">
+                                            <strong>Analysis Start Date</strong>
+                                            <small class="text-muted d-block">Start date for sales data analysis</small>
+                                        </label>
+                                        <input type="date" class="form-control" id="analysisStartDate" 
+                                               name="analysisStartDate" required>
+                                    </div>
+
+                                    <!-- Analysis End Date -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="analysisEndDate" class="form-label">
+                                            <strong>Analysis End Date</strong>
+                                            <small class="text-muted d-block">End date for sales data analysis</small>
+                                        </label>
+                                        <input type="date" class="form-control" id="analysisEndDate" 
+                                               name="analysisEndDate" required>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Core Duration -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="coreDurationMonths" class="form-label">
+                                            <strong>Core Analysis Duration</strong>
+                                            <small class="text-muted d-block">Months of data for Core classification</small>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="coreDurationMonths" 
+                                                   name="coreDurationMonths" step="1" min="1" max="24" 
+                                                   placeholder="6" required>
+                                            <span class="input-group-text">months</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Bestseller Duration -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="bestsellerDurationDays" class="form-label">
+                                            <strong>Bestseller Analysis Duration</strong>
+                                            <small class="text-muted d-block">Days of recent data for Bestseller classification</small>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="bestsellerDurationDays" 
+                                                   name="bestsellerDurationDays" step="1" min="1" max="365" 
+                                                   placeholder="90" required>
+                                            <span class="input-group-text">days</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </form>
+                            </div>
+                            <div class="card-footer-modern">
+                                <div class="action-buttons">
+                                    <button type="button" class="btn-secondary-modern" id="loadDefaultsBtn">
+                                        <i class="fa fa-undo"></i>
+                                        Load Defaults
+                                    </button>
+                                    <button type="button" class="btn-secondary-modern" id="loadCurrentBtn">
+                                        <i class="fa fa-refresh"></i>
+                                        Reload Current
+                                    </button>
+                                    <button type="button" class="btn-primary-modern" id="saveParamsBtn">
+                                        <i class="fa fa-save"></i>
+                                        Save Parameters
+                                    </button>
+                                    <button type="button" class="btn-primary-modern" id="runAlgorithmBtn">
+                                        <i class="fa fa-play"></i>
+                                        Run Algorithm
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Parameter Sets History -->
+                        <div class="upload-card-modern">
+                            <div class="card-header-modern status-success">
+                                <div class="status-title">
+                                    <i class="fa fa-history"></i>
+                                    Parameter Sets History
+                                </div>
+                            </div>
+                            <div class="card-body-modern" style="min-height: auto; padding: 2rem 1.5rem;">
+                                <div id="parameterSetsContainer">
+                                    <div class="text-center text-muted">
+                                        <i class="fa fa-spinner fa-spin"></i>
+                                        Loading parameter sets...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success/Error Messages will be handled by JavaScript alerts or existing toast system -->
+
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/static/js/toast.js}"></script>
+<script src="../static/js/algorithmParams.js"></script>
+</body>
+</html>

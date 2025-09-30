@@ -116,4 +116,14 @@ public class StyleDao {
         Long count = (Long) query.getSingleResult();
         return count > 0;
     }
+
+    /**
+     * Get total style count for dashboard metrics
+     * 
+     * @return Total number of style records
+     */
+    public Long getTotalStyleCount() {
+        Query query = entityManager.createQuery("SELECT COUNT(s) FROM Style s");
+        return (Long) query.getSingleResult();
+    }
 }

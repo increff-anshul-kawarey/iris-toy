@@ -14,15 +14,6 @@ import java.util.Date;
  * 
  * Stores the output of NOOS classification as specified in PRD:
  * | Category | Style Code | Style ROS | Type | Style Rev Contri |
- * 
- * PRD Compliance:
- * - Matches exact output format required
- * - Stores algorithm results for TSV download
- * - Tracks when results were calculated
- * 
- * @author Anshuk Kawarry
- * @version 1.0
- * @since 2025-01-01
  */
 @Entity
 @Table(name = "noos_results")

@@ -115,4 +115,14 @@ public class SkuDao {
         Long count = (Long) query.getSingleResult();
         return count > 0;
     }
+
+    /**
+     * Get total SKU count for dashboard metrics
+     * 
+     * @return Total number of SKU records
+     */
+    public Long getTotalSkuCount() {
+        Query query = entityManager.createQuery("SELECT COUNT(s) FROM SKU s");
+        return (Long) query.getSingleResult();
+    }
 }

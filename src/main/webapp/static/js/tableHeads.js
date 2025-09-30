@@ -2,10 +2,10 @@ var report1TableHead=`
    <thead>
                 <tr>
                     <th>Sr.No</th>
-                    <th>Field 1</th>
-                    <th>Field 2</th>
-                    <th>Field 3</th>
-                    <th>Field 4</th>
+                    <th>Algorithm Label</th>
+                    <th>Execution Status</th>
+                    <th>Styles Processed</th>
+                    <th>Classification Count</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -13,10 +13,10 @@ var report1TableHead=`
                 <tfoot>
                 <tr>
                     <th>Sr.No</th>
-                    <th>Field 1</th>
-                    <th>Field 2</th>
-                    <th>Field 3</th>
-                    <th>Field 4</th>
+                    <th>Algorithm Label</th>
+                    <th>Execution Status</th>
+                    <th>Styles Processed</th>
+                    <th>Classification Count</th>
                 </tr>
                 </tfoot>
 `;
@@ -24,11 +24,11 @@ var report2TableHead=`
    <thead>
                 <tr>
                     <th>Sr.No</th>
-                    <th>Field 1</th>
-                    <th>Field 2</th>
-                    <th>Field 3</th>
-                    <th>Field 4</th>
-                    <th>Field 5</th>
+                    <th>Total Tasks</th>
+                    <th>Successful Tasks</th>
+                    <th>Task Type</th>
+                    <th>Success Rate</th>
+                    <th>Avg Execution Time</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -36,11 +36,11 @@ var report2TableHead=`
                 <tfoot>
                 <tr>
                     <th>Sr.No</th>
-                    <th>Field 1</th>
-                    <th>Field 2</th>
-                    <th>Field 3</th>
-                    <th>Field 4</th>
-                    <th>Field 5</th>
+                    <th>Total Tasks</th>
+                    <th>Successful Tasks</th>
+                    <th>Task Type</th>
+                    <th>Success Rate</th>
+                    <th>Avg Execution Time</th>
                 </tr>
                 </tfoot>
 `;

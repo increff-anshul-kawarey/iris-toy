@@ -133,4 +133,38 @@ public class TaskDao {
         query.setParameter("status", status);
         return query.getSingleResult();
     }
+
+    /**
+     * Get recent task statistics for dashboard
+     * @param days Number of days to look back
+     * @return Array with [totalTasks, completedTasks]
+     */
+    public long[] getRecentTaskStats(int days) {
+        // Calculate cutoff date
+        long cutoffTime = System.currentTimeMillis() - (days * 24L * 60L * 60L * 1000L);
+        java.util.Date cutoffDate = new java.util.Date(cutoffTime);
+        
+        // Total tasks in last X days
+        String totalHql = "SELECT COUNT(t) FROM Task t WHERE t.createdDate >= :cutoffDate";
+        TypedQuery<Long> totalQuery = entityManager.createQuery(totalHql, Long.class);
+        totalQuery.setParameter("cutoffDate", cutoffDate);
+        long totalTasks = totalQuery.getSingleResult();
+        
+        // Completed tasks in last X days
+        String completedHql = "SELECT COUNT(t) FROM Task t WHERE t.createdDate >= :cutoffDate AND t.status = 'COMPLETED'";
+        TypedQuery<Long> completedQuery = entityManager.createQuery(completedHql, Long.class);
+        completedQuery.setParameter("cutoffDate", cutoffDate);
+        long completedTasks = completedQuery.getSingleResult();
+        
+        return new long[]{totalTasks, completedTasks};
+    }
+
+    /**
+     * Get count of active tasks (PENDING + RUNNING)
+     */
+    public int getActiveTaskCount() {
+        String hql = "SELECT COUNT(t) FROM Task t WHERE t.status IN ('PENDING', 'RUNNING')";
+        TypedQuery<Long> query = entityManager.createQuery(hql, Long.class);
+        return query.getSingleResult().intValue();
+    }
 }

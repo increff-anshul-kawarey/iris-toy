@@ -132,7 +132,7 @@ public class NoosAlgorithmService {
             System.out.println("🧹 SYSTEM.OUT: Progress 20% - Applying liquidation cleanup...");
             Thread.sleep(2000); // 2 second delay to see progress
 
-            double liquidationThreshold = getParameterValue(parameters.getParameter1(), DEFAULT_LIQUIDATION_THRESHOLD);
+            double liquidationThreshold = getParameterValue(parameters.getLiquidationThreshold(), DEFAULT_LIQUIDATION_THRESHOLD);
             List<Sales> cleanedSales = applyLiquidationCleanup(allSales, liquidationThreshold);
             logger.info("🧹 After liquidation cleanup ({}%): {} sales records",
                        liquidationThreshold * 100, cleanedSales.size());
@@ -264,7 +264,7 @@ public class NoosAlgorithmService {
             }
 
             // Step 2: Apply liquidation cleanup (PRD mandatory requirement)
-            double liquidationThreshold = getParameterValue(parameters.getParameter1(), DEFAULT_LIQUIDATION_THRESHOLD);
+            double liquidationThreshold = getParameterValue(parameters.getLiquidationThreshold(), DEFAULT_LIQUIDATION_THRESHOLD);
             List<Sales> cleanedSales = applyLiquidationCleanup(allSales, liquidationThreshold);
             logger.info("🧹 After liquidation cleanup ({}%): {} sales records", 
                        liquidationThreshold * 100, cleanedSales.size());
@@ -503,9 +503,9 @@ public class NoosAlgorithmService {
     private String determineStyleType(StyleSalesData styleData, AlgoParametersData parameters, 
                                     CategoryBenchmark categoryBenchmark) {
         // Extract parameters with defaults
-        double bestsellerMultiplier = getParameterValue(parameters.getParameter2(), DEFAULT_BESTSELLER_MULTIPLIER);
-        int minVolume = (int) getParameterValue(parameters.getParameter3(), DEFAULT_MIN_VOLUME);
-        double consistencyThreshold = getParameterValue(parameters.getParameter4(), DEFAULT_CONSISTENCY_THRESHOLD);
+        double bestsellerMultiplier = getParameterValue(parameters.getBestsellerMultiplier(), DEFAULT_BESTSELLER_MULTIPLIER);
+        int minVolume = (int) getParameterValue(parameters.getMinVolumeThreshold(), DEFAULT_MIN_VOLUME);
+        double consistencyThreshold = getParameterValue(parameters.getConsistencyThreshold(), DEFAULT_CONSISTENCY_THRESHOLD);
 
         // Calculate key metrics
         double revenuePerDay = styleData.getTotalRevenue() / Math.max(styleData.getDaysAvailable(), 1);
@@ -639,9 +639,9 @@ public class NoosAlgorithmService {
      */
     private String formatParameters(AlgoParametersData parameters) {
         return String.format("param1=%.2f, param2=%.2f, param3=%.2f, param4=%.2f, param5=%s, startDate=%s, endDate=%s",
-                parameters.getParameter1(), parameters.getParameter2(),
-                parameters.getParameter3(), parameters.getParameter4(),
-                parameters.getParameter5(),
+                parameters.getLiquidationThreshold(), parameters.getBestsellerMultiplier(),
+                parameters.getMinVolumeThreshold(), parameters.getConsistencyThreshold(),
+                parameters.getAlgorithmLabel(),
                 parameters.getAnalysisStartDate() != null ? parameters.getAnalysisStartDate() : "null",
                 parameters.getAnalysisEndDate() != null ? parameters.getAnalysisEndDate() : "null");
     }

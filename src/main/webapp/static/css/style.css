@@ -147,6 +147,8 @@ button {
     color: #495057;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    word-wrap: break-word;
+    hyphens: auto;
 }
 
 /* Main Content Area */
@@ -616,5 +618,508 @@ button {
     .upload-modal-actions .btn {
         width: 100%;
     }
+}
+
+/* ==================== NOOS RESULTS CARDS ==================== */
+
+.noos-card-modern {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.noos-card-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.noos-card-modern .card-header-modern {
+    border: none;
+    padding: 0.75rem 1.25rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.noos-card-modern .card-body-modern {
+    padding: 1.5rem 1.25rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.noos-icon-container {
+    margin-bottom: 1rem;
+}
+
+.noos-icon {
+    font-size: 2.5rem;
+    opacity: 0.8;
+    color: #6c757d;
+}
+
+.noos-count {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+}
+
+.noos-percentage {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #7c3aed;
+    margin-bottom: 0.75rem;
+}
+
+.noos-description {
+    font-size: 0.85rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.noos-card-modern .card-footer-modern {
+    background: #f8f9fa;
+    border: none;
+    padding: 1rem 1.25rem;
+    margin-top: auto;
+    text-align: center;
+}
+
+.noos-last-run {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+/* Color variations for different card types */
+.card-primary .noos-icon { color: #007bff; }
+.card-success .noos-icon { color: #28a745; }
+.card-warning .noos-icon { color: #ffc107; }
+.card-info .noos-icon { color: #17a2b8; }
+
+.card-primary .noos-count { color: #007bff; }
+.card-success .noos-count { color: #28a745; }
+.card-warning .noos-count { color: #e67e22; }
+.card-info .noos-count { color: #17a2b8; }
+
+/* NOOS Results Section */
+#noos-results-section {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e9ecef;
+}
+
+#noos-results-section h4 {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+#noos-results-section .fa-chart-bar {
+    color: #7c3aed;
+    margin-right: 0.5rem;
+}
+
+/* Summary content in modal */
+.noos-summary {
+    padding: 1rem 0;
+}
+
+.noos-summary h6 {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.noos-summary ul li {
+    padding: 0.25rem 0;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.noos-summary ul li:last-child {
+    border-bottom: none;
+}
+
+/* Type details table */
+.noos-type-details .table {
+    font-size: 0.9rem;
+}
+
+.noos-type-details .table th {
+    background-color: #f8f9fa;
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+.noos-type-details .table td {
+    vertical-align: middle;
+}
+
+/* Ensure consistent card heights in rows */
+#noos-cards-container .row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+#noos-cards-container .col-xl-3,
+#noos-cards-container .col-lg-4,
+#noos-cards-container .col-md-6,
+#noos-cards-container .col-sm-12 {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .noos-card-modern {
+        margin-bottom: 1rem;
+    }
+    
+    .noos-count {
+        font-size: 1.8rem;
+    }
+    
+    .noos-icon {
+        font-size: 2rem;
+    }
+    
+    #noos-results-section {
+        padding: 1rem;
+    }
+    
+    #noos-results-section .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    #noos-results-section .d-flex > div {
+        margin-top: 1rem;
+    }
+    
+    .noos-card-modern .card-header-modern {
+        min-height: 70px;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 576px) {
+    #noos-cards-container .col-xl-3,
+    #noos-cards-container .col-lg-4,
+    #noos-cards-container .col-md-6,
+    #noos-cards-container .col-sm-12 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .noos-card-modern .card-header-modern {
+        min-height: 50px;
+        padding: 0.5rem 1rem;
+    }
+}
+
+/* Better responsive grid for different screen sizes */
+@media (min-width: 1200px) {
+    .noos-card-modern .card-header-modern {
+        min-height: 65px;
+    }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+    .noos-card-modern .card-header-modern {
+        min-height: 70px;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .noos-card-modern .card-header-modern {
+        min-height: 75px;
+    }
+}
+
+/* ==================== MODERN FORM STYLING ==================== */
+
+/* Form inputs with rounded corners and soft shadows */
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+    outline: none;
+}
+
+.form-control.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.15);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0 8px 8px 0;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* ==================== MODERN TABLE STYLING ==================== */
+
+.table {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: none;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border: none;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem 0.75rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table tbody td {
+    border: none;
+    padding: 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ==================== DROPDOWN STYLING ==================== */
+
+.dropdown-menu {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 0.5rem 0;
+}
+
+.dropdown-item {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    color: #495057;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    color: #007bff;
+}
+
+.dropdown-divider {
+    margin: 0.5rem 0;
+    border-color: #e9ecef;
+}
+
+/* ==================== BUTTON GROUP STYLING ==================== */
+
+.btn-group .btn {
+    border-radius: 8px;
+    margin-right: 0.25rem;
+}
+
+.btn-group .btn:first-child {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.btn-group .btn:last-child {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+/* ==================== DASHBOARD TILES MODERN STYLING ==================== */
+
+.dashboard-tile-modern {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.dashboard-tile-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.dashboard-tile-header {
+    padding: 1rem 1.25rem 0.5rem;
+    text-align: center;
+}
+
+.dashboard-tile-icon {
+    font-size: 2.5rem;
+    color: #6c757d;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-tile-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+}
+
+.dashboard-tile-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Color variations for dashboard tiles */
+.tile-primary .dashboard-tile-icon { color: #007bff; }
+.tile-success .dashboard-tile-icon { color: #28a745; }
+.tile-warning .dashboard-tile-icon { color: #ffc107; }
+.tile-info .dashboard-tile-icon { color: #17a2b8; }
+
+.tile-primary .dashboard-tile-value { color: #007bff; }
+.tile-success .dashboard-tile-value { color: #28a745; }
+.tile-warning .dashboard-tile-value { color: #e67e22; }
+.tile-info .dashboard-tile-value { color: #17a2b8; }
+
+/* ==================== TOAST NOTIFICATIONS ==================== */
+
+.toast {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toast-header {
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.toast-body {
+    padding: 1rem;
+    font-weight: 500;
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
+.gap-3 {
+    gap: 1rem;
+}
+
+.rounded-modern {
+    border-radius: 12px;
+}
+
+.shadow-soft {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+.shadow-soft-lg {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* ==================== PARAMETER SETS STYLING ==================== */
+
+.parameter-set-card {
+    background: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.parameter-set-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+.parameter-set-card.border-success {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fff9 100%);
+}
+
+.parameter-set-name {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+    font-size: 1.05rem;
+}
+
+.parameter-set-details {
+    font-size: 0.85rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.parameter-set-details strong {
+    color: #495057;
+}
+
+.parameter-set-actions {
+    text-align: right;
+}
+
+.parameter-set-actions .btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+.badge {
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
 }
 

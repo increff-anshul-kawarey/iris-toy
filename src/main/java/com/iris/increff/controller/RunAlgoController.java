@@ -6,9 +6,9 @@ import com.iris.increff.model.DashBoardData;
 import com.iris.increff.model.NoosResult;
 import com.iris.increff.model.Task;
 import com.iris.increff.service.NoosAlgorithmService;
+import com.iris.increff.service.DashboardMetricsService;
 import com.iris.increff.util.ApiException;
 import com.iris.increff.util.ProcessTsv;
-import com.iris.increff.util.TempDataCreator;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.slf4j.Logger;
@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,6 +36,9 @@ public class RunAlgoController {
 
     @Autowired
     private TaskDao taskDao;
+
+    @Autowired
+    private DashboardMetricsService dashboardMetricsService;
 
     @ApiOperation(value = "Run NOOS Algorithm (Async)")
     @RequestMapping(path = "/api/run/noos/async", method = RequestMethod.POST)
@@ -164,6 +168,50 @@ public class RunAlgoController {
         }
     }
 
+    @ApiOperation(value = "Get NOOS Dashboard Data")
+    @RequestMapping(path = "/api/results/noos/dashboard", method = RequestMethod.GET)
+    public ResponseEntity<Map<String, Object>> getNoosDashboardData() {
+        logger.info("📊 Fetching NOOS dashboard data");
+        
+        try {
+            Map<String, Object> dashboardData = new HashMap<>();
+            
+            // Get results summary
+            Map<String, Long> summary = noosAlgorithmService.getResultsCountByType();
+            dashboardData.put("summary", summary);
+            
+            // Get total count
+            long totalResults = summary.values().stream().mapToLong(Long::longValue).sum();
+            dashboardData.put("totalResults", totalResults);
+            
+            // Get latest run info
+            List<NoosResult> latestResults = noosAlgorithmService.getLatestResults();
+            if (!latestResults.isEmpty()) {
+                NoosResult latest = latestResults.get(0);
+                dashboardData.put("lastRunDate", latest.getCalculatedDate());
+                dashboardData.put("hasResults", true);
+            } else {
+                dashboardData.put("hasResults", false);
+            }
+            
+            // Calculate percentages
+            if (totalResults > 0) {
+                Map<String, Double> percentages = new HashMap<>();
+                for (Map.Entry<String, Long> entry : summary.entrySet()) {
+                    double percentage = (entry.getValue() * 100.0) / totalResults;
+                    percentages.put(entry.getKey(), Math.round(percentage * 10.0) / 10.0); // Round to 1 decimal
+                }
+                dashboardData.put("percentages", percentages);
+            }
+            
+            logger.info("✅ Retrieved NOOS dashboard data: {} total results", totalResults);
+            return ResponseEntity.ok(dashboardData);
+        } catch (Exception e) {
+            logger.error("❌ Failed to fetch NOOS dashboard data: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
     // Legacy endpoints (keep for backward compatibility)
 
     @ApiOperation(value = "Run Algo (Legacy)")
@@ -182,9 +230,22 @@ public class RunAlgoController {
     @ApiOperation(value = "Execution Updates")
     @RequestMapping(path = "/api/run/updates", method = RequestMethod.GET)
     public DashBoardData executionResults() throws ApiException {
-        logger.info("📊 Dashboard data requested");
-        System.out.println("Fetch DashBoard Tiles Data Successful");
-        return TempDataCreator.createDashBoardData();
+        logger.info("📊 Real dashboard metrics requested");
+        System.out.println("Fetching Real Dashboard Tiles Data...");
+        try {
+            return dashboardMetricsService.getDashboardMetrics();
+        } catch (Exception e) {
+            logger.error("❌ Failed to get dashboard metrics, falling back to dummy data: {}", e.getMessage());
+            System.out.println("❌ Dashboard metrics failed, using fallback data");
+            return null;
+        }
+    }
+
+    @ApiOperation(value = "Execution Updates (legacy endpoint)")
+    @RequestMapping(path = "/api/updates", method = RequestMethod.GET)
+    public DashBoardData executionResultsLegacy() throws ApiException {
+        // Legacy endpoint for dashboard compatibility
+        return executionResults();
     }
 
     /**
@@ -192,9 +253,9 @@ public class RunAlgoController {
      */
     private String formatParameters(AlgoParametersData parameters) {
         return String.format("param1=%.2f, param2=%.2f, param3=%.2f, param4=%.2f, param5=%s, startDate=%s, endDate=%s",
-                parameters.getParameter1(), parameters.getParameter2(),
-                parameters.getParameter3(), parameters.getParameter4(),
-                parameters.getParameter5(),
+                parameters.getLiquidationThreshold(), parameters.getBestsellerMultiplier(),
+                parameters.getMinVolumeThreshold(), parameters.getConsistencyThreshold(),
+                parameters.getAlgorithmLabel(),
                 parameters.getAnalysisStartDate() != null ? parameters.getAnalysisStartDate() : "null",
                 parameters.getAnalysisEndDate() != null ? parameters.getAnalysisEndDate() : "null");
     }

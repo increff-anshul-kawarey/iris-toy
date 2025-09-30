@@ -2,10 +2,13 @@ package com.iris.increff.controller;
 
 import com.iris.increff.model.Report1Data;
 import com.iris.increff.model.Report2Data;
+import com.iris.increff.service.ReportAnalyticsService;
 import com.iris.increff.util.ProcessTsv;
-import com.iris.increff.util.TempDataCreator;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -20,19 +23,38 @@ import java.util.List;
 @RestController
 public class ReportsController {
 
+    private static final Logger logger = LoggerFactory.getLogger(ReportsController.class);
 
-    @ApiOperation(value = "Get Reports1")
+    @Autowired
+    private ReportAnalyticsService reportAnalyticsService;
+
+
+    @ApiOperation(value = "Get NOOS Analytics Report")
     @RequestMapping(path = "/api/report/report1", method = RequestMethod.GET)
     public List<Report1Data> getReport1() {
-        System.out.println("Fetch Report 1 is Successful");
-        return TempDataCreator.createReport1Data(5);
+        logger.info("📊 NOOS Analytics Report requested");
+        System.out.println("Fetching NOOS Analytics Report...");
+        try {
+            return reportAnalyticsService.generateNoosAnalyticsReport();
+        } catch (Exception e) {
+            logger.error("❌ Failed to generate NOOS analytics report, using fallback: {}", e.getMessage());
+            System.out.println("❌ Analytics failed, using sample data");
+            return null;
+        }
     }
 
-    @ApiOperation(value = "Get Reports2")
+    @ApiOperation(value = "Get System Health Report")
     @RequestMapping(path = "/api/report/report2", method = RequestMethod.GET)
     public List<Report2Data> getReport2() {
-        System.out.println("Fetch Report 2 is Successful");
-        return TempDataCreator.createReport2Data(10);
+        logger.info("🏥 System Health Report requested");
+        System.out.println("Fetching System Health Report...");
+        try {
+            return reportAnalyticsService.generateSystemHealthReport();
+        } catch (Exception e) {
+            logger.error("❌ Failed to generate system health report, using fallback: {}", e.getMessage());
+            System.out.println("❌ Health report failed, using sample data");
+            return null;
+        }
     }
 
     @ApiOperation(value = "Download Reports")

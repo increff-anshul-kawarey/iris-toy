@@ -94,11 +94,18 @@ public class AlgorithmParameters {
      */
     public AlgoParametersData toAlgoParametersData() {
         AlgoParametersData data = new AlgoParametersData();
-        data.setParameter1(this.liquidationThreshold);
-        data.setParameter2(this.bestsellerMultiplier);
-        data.setParameter3(this.minVolumeThreshold);
-        data.setParameter4(this.consistencyThreshold);
-        data.setParameter5(this.description);
+        
+        // Parameter Set Information
+        data.setParameterSetName(this.parameterSet);
+        data.setIsActive(this.isActive);
+        data.setLastUpdated(this.lastUpdatedDate);
+        
+        // Algorithm Parameters
+        data.setLiquidationThreshold(this.liquidationThreshold);
+        data.setBestsellerMultiplier(this.bestsellerMultiplier);
+        data.setMinVolumeThreshold(this.minVolumeThreshold);
+        data.setConsistencyThreshold(this.consistencyThreshold);
+        data.setAlgorithmLabel(this.description);
         data.setAnalysisStartDate(this.analysisStartDate);
         data.setAnalysisEndDate(this.analysisEndDate);
         data.setCoreDurationMonths(this.coreDurationMonths);
@@ -110,11 +117,11 @@ public class AlgorithmParameters {
      * Update from AlgoParametersData
      */
     public void updateFromAlgoParametersData(AlgoParametersData data, String updatedBy) {
-        this.liquidationThreshold = data.getParameter1();
-        this.bestsellerMultiplier = data.getParameter2();
-        this.minVolumeThreshold = data.getParameter3();
-        this.consistencyThreshold = data.getParameter4();
-        this.description = data.getParameter5();
+        this.liquidationThreshold = data.getLiquidationThreshold();
+        this.bestsellerMultiplier = data.getBestsellerMultiplier();
+        this.minVolumeThreshold = data.getMinVolumeThreshold();
+        this.consistencyThreshold = data.getConsistencyThreshold();
+        this.description = data.getAlgorithmLabel();
         this.analysisStartDate = data.getAnalysisStartDate();
         this.analysisEndDate = data.getAnalysisEndDate();
         this.coreDurationMonths = data.getCoreDurationMonths();

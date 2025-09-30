@@ -120,6 +120,12 @@
         <li class="list-group-item sidebar-separator-title text-muted align-items-center menu-collapsed d-flex">
             <small>ALGORITHM</small>
         </li>
+        <a th:href="@{/ui/algorithm_params}" class="bg-dark list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-start align-items-center">
+                <span class="fa fa-sliders fa-fw mr-3"></span>
+                <span class="menu-collapsed">NOOS Settings</span>
+            </div>
+        </a>
         <a th:href="@{/ui/dashboard}" class="bg-dark list-group-item list-group-item-action">
             <div class="d-flex w-100 justify-content-start align-items-center">
                 <span class="fa fa-dashboard fa-fw mr-3"></span>
@@ -133,14 +139,14 @@
         <!-- /END Separator -->
         <a th:href="@{/ui/report1}" class="bg-dark list-group-item list-group-item-action">
             <div class="d-flex w-100 justify-content-start align-items-center">
-                <span class="fa fa-line-chart fa-fw mr-3"></span>
-                <span class="menu-collapsed">ReportName 1</span>
+                <span class="fa fa-chart-bar fa-fw mr-3"></span>
+                <span class="menu-collapsed">NOOS Analytics</span>
             </div>
         </a>
         <a th:href="@{/ui/report2}" class="bg-dark list-group-item list-group-item-action">
             <div class="d-flex w-100 justify-content-start align-items-center">
-                <span class="fa fa-table fa-fw mr-3"></span>
-                <span class="menu-collapsed">ReportName 2</span>
+                <span class="fa fa-heartbeat fa-fw mr-3"></span>
+                <span class="menu-collapsed">System Health</span>
             </div>
         </a>
         <!-- Separator without title -->

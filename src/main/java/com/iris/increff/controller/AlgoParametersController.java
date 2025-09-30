@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,21 +25,31 @@ public class AlgoParametersController {
     private AlgorithmParametersDao algorithmParametersDao;
 
     @ApiOperation(value = "Get current algorithm parameters")
-    @RequestMapping(path = "/api/algo", method = RequestMethod.GET)
+    @RequestMapping(path = "/api/algo/current", method = RequestMethod.GET)
+    @Transactional
     public ResponseEntity<AlgoParametersData> getCurrentParameters() {
         try {
+            logger.info("🔄 Getting current algorithm parameters...");
             AlgorithmParameters params = algorithmParametersDao.getDefaultParameters();
+            
+            if (params == null) {
+                logger.error("❌ No default parameters found and failed to create them");
+                return ResponseEntity.status(500).build();
+            }
+            
             AlgoParametersData data = params.toAlgoParametersData();
             logger.info("✅ Retrieved algorithm parameters: {}", params.getParameterSet());
             return ResponseEntity.ok(data);
         } catch (Exception e) {
             logger.error("❌ Failed to retrieve algorithm parameters: {}", e.getMessage(), e);
+            e.printStackTrace();
             return ResponseEntity.status(500).build();
         }
     }
 
     @ApiOperation(value = "Update algorithm parameters")
-    @RequestMapping(path = "/api/algo", method = RequestMethod.PUT)
+    @RequestMapping(path = "/api/algo/update", method = RequestMethod.POST)
+    @Transactional
     public ResponseEntity<AlgoParametersData> updateParameters(@RequestBody AlgoParametersData algoParametersData) {
         try {
             logger.info("🔄 Updating algorithm parameters");
@@ -63,8 +74,14 @@ public class AlgoParametersController {
 
     @ApiOperation(value = "Get all parameter sets")
     @RequestMapping(path = "/api/algo/sets", method = RequestMethod.GET)
+    @Transactional
     public ResponseEntity<List<AlgoParametersData>> getAllParameterSets() {
         try {
+            logger.info("🔄 Getting all parameter sets...");
+            
+            // Ensure default parameters exist first
+            algorithmParametersDao.getDefaultParameters();
+            
             List<AlgorithmParameters> paramSets = algorithmParametersDao.findAllActive();
             List<AlgoParametersData> dataList = paramSets.stream()
                     .map(AlgorithmParameters::toAlgoParametersData)
@@ -75,6 +92,7 @@ public class AlgoParametersController {
 
         } catch (Exception e) {
             logger.error("❌ Failed to retrieve parameter sets: {}", e.getMessage(), e);
+            e.printStackTrace();
             return ResponseEntity.status(500).build();
         }
     }
@@ -130,6 +148,57 @@ public class AlgoParametersController {
             logger.error("❌ Failed to retrieve parameter set '{}': {}", parameterSetName, e.getMessage(), e);
             return ResponseEntity.status(500).build();
         }
+    }
+
+    @ApiOperation(value = "Get default parameters")
+    @RequestMapping(path = "/api/algo/defaults", method = RequestMethod.GET)
+    public ResponseEntity<AlgoParametersData> getDefaultParameters() {
+        try {
+            logger.info("🔄 Loading default parameters");
+            
+            // Create fresh default parameters (not from database)
+            AlgorithmParameters defaults = new AlgorithmParameters();
+            defaults.setParameterSet("default");
+            defaults.setLiquidationThreshold(0.25);
+            defaults.setBestsellerMultiplier(1.20);
+            defaults.setMinVolumeThreshold(25.0);
+            defaults.setConsistencyThreshold(0.75);
+            defaults.setDescription("Default NOOS parameters");
+            defaults.setCoreDurationMonths(6);
+            defaults.setBestsellerDurationDays(90);
+            
+            // Set reasonable date range
+            try {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
+                defaults.setAnalysisStartDate(sdf.parse("2019-01-01"));
+                defaults.setAnalysisEndDate(sdf.parse("2019-06-23"));
+            } catch (Exception e) {
+                defaults.setAnalysisStartDate(new java.util.Date());
+                defaults.setAnalysisEndDate(new java.util.Date());
+            }
+
+            logger.info("✅ Default parameters loaded");
+            return ResponseEntity.ok(defaults.toAlgoParametersData());
+
+        } catch (Exception e) {
+            logger.error("❌ Failed to load default parameters: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @ApiOperation(value = "Get current algorithm parameters (legacy endpoint)")
+    @RequestMapping(path = "/api/algo", method = RequestMethod.GET)
+    public ResponseEntity<AlgoParametersData> getCurrentParametersLegacy() {
+        // Legacy endpoint for dashboard compatibility
+        return getCurrentParameters();
+    }
+
+    @ApiOperation(value = "Update algorithm parameters (legacy endpoint)")
+    @RequestMapping(path = "/api/algo", method = RequestMethod.PUT)
+    @Transactional
+    public ResponseEntity<AlgoParametersData> updateParametersLegacy(@RequestBody AlgoParametersData algoParametersData) {
+        // Legacy endpoint for dashboard compatibility
+        return updateParameters(algoParametersData);
     }
 
     @ApiOperation(value = "Reset to default parameters")

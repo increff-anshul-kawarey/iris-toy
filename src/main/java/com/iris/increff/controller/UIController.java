@@ -18,6 +18,10 @@ public class UIController {
     public ModelAndView uploadData() {
         return mav("uploadData.html");
     }
+    @RequestMapping(value = "/ui/algorithm_params")
+    public ModelAndView algorithmParams() {
+        return mav("algorithmParams.html");
+    }
     @RequestMapping(value = "/ui/dashboard")
     public ModelAndView algoProperties() {
         return mav("dashBoard.html");

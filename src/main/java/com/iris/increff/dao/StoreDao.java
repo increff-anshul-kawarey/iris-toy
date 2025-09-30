@@ -115,4 +115,14 @@ public class StoreDao {
         Long count = (Long) query.getSingleResult();
         return count > 0;
     }
+
+    /**
+     * Get total store count for dashboard metrics
+     * 
+     * @return Total number of store records
+     */
+    public Long getTotalStoreCount() {
+        Query query = entityManager.createQuery("SELECT COUNT(s) FROM Store s");
+        return (Long) query.getSingleResult();
+    }
 }

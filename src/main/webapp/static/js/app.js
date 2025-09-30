@@ -11,7 +11,7 @@ function getAlgoUrl(){
 return baseUrl + "/api/algo";
 }
 function getRunUrl(){
-return baseUrl + "/api/run";
+return baseUrl + "/api";
 }
 function ajaxRestApiCallWithData(url, type, successfunction, json) {
 	$.ajax({

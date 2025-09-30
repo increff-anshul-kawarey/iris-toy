@@ -8,88 +8,106 @@
 <div class="row" id="body-row">
     <div th:replace="mysnippets.html :: side_bar"></div>
     <div class="col">
-        <div class="col">
-            <div class="mt-2" >
-                <div >
-                    <div class="d-flex justify-content-between">
-                        <div><h4>DashBoard</h4></div>
-                        <div class="wrapper">
-                            <button type="button" class="btn btn-primary" id="updatealgo">
-                                Edit
-                            </button>
-                            <div class="btn-group">
-                                <button type="button" id="run-algo-button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    Run Algo
-                                </button>
-                                <div class="dropdown-menu dropdown-menu-right">
-                                    <button class="dropdown-item" type="button" id="run-algo1" onclick="runAlgo('algo1')">Algorithm 1</button>
-                                    <button class="dropdown-item" type="button" id="run-algo2" onclick="runAlgo('algo2')">Algorithm 2</button>
-                                    <div class="dropdown-divider"></div>
-                                    <button class="dropdown-item" type="button" id="run-all" onclick="runAlgo('All')">Run All</button>
-                                </div>
+        <!-- Dashboard Header -->
+        <div class="upload-header">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h1 class="upload-title">
+                                    <i class="fa fa-dashboard"></i>
+                                    Dashboard
+                                </h1>
+                                <p class="upload-subtitle">
+                                    Monitor system performance and algorithm results
+                                </p>
                             </div>
                         </div>
                     </div>
-
-                </div>
-
-        <div class="mt-3 " id="cardview">
-            <div class="card-body" >
-            <div class="row">
-                <div class="col-md-3 " id="firstTile">
-                </div>
-                <div class="col-md-3" id="secondTile">
-                </div>
-                <div class="col-md-3" id="thirdTile">
-                </div>
-                <div class="col-md-3 " id="fourthtile">
                 </div>
             </div>
+        </div>
+
+        <!-- Dashboard Cards Container -->
+        <div class="upload-cards-container">
+            <div class="container-fluid">
+                <!-- System Overview Cards -->
+                <div class="row" id="cardview">
+                    <div class="col-md-3" id="firstTile">
+                    </div>
+                    <div class="col-md-3" id="secondTile">
+                    </div>
+                    <div class="col-md-3" id="thirdTile">
+                    </div>
+                    <div class="col-md-3" id="fourthtile">
+                    </div>
+                </div>
+
+                <!-- NOOS Results Section -->
+                <div class="mt-4" id="noos-results-section">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4><i class="fa fa-chart-bar"></i> NOOS Algorithm Results</h4>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn-secondary-modern" id="refresh-noos-btn" onclick="loadNoosResults()">
+                                <i class="fa fa-refresh"></i> Refresh
+                            </button>
+                            <button type="button" class="btn-primary-modern" id="download-noos-btn" onclick="downloadNoosResults()" disabled>
+                                <i class="fa fa-download"></i> Download TSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row" id="noos-cards-container">
+                        <!-- NOOS result cards will be populated here -->
+                    </div>
+                </div>
             </div>
         </div>
         </div>
     </div>
 
 <div class="modal" tabindex="-1" role="dialog" id="update-properties-modal">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Update Algo Properties</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <form class="row g-3" id="algo-edit-form">
-                            <div class="col-md-6">
-                                <label  class="form-label" data-toggle="tooltip" title="">Parameter 1</label>
-                                <input type="number" pattern="^\d*(\.\d{0,2})?$" step="0.01"  class="form-control" name="parameter1" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" data-toggle="tooltip" title="">Parameter 2</label>
-                                <input type="number" pattern="^\d*(\.\d{0,2})?$" step="0.01"  class="form-control" name="parameter2" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label  class="form-label" data-toggle="tooltip" title="">Parameter 3</label>
-                                <input type="number" pattern="^\d*(\.\d{0,2})?$" step="0.01"  class="form-control" name="parameter3" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label"  data-toggle="tooltip" title="">Parameter 4</label>
-                                <input type="number" pattern="^\d*(\.\d{0,2})?$" step="0.01"  class="form-control" name="parameter4" required>
-                            </div>
-                            <div class="col-md-12">
-                                <label  class="form-label" data-toggle="tooltip" title="">Parameter 5</label>
-                                <input type="text" readonly="readonly" class="form-control" name="parameter5" id="parameter5"  required>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-primary" id="update-algo">Update</button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body-modern">
+                <div class="upload-modal-header">
+                    <button type="button" class="modal-close-btn" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h5 class="upload-modal-title">Update Algorithm Properties</h5>
+                </div>
+                <div class="upload-modal-content">
+                    <form class="row g-3" id="algo-edit-form">
+                        <div class="col-md-6">
+                            <label class="form-label" data-toggle="tooltip" title="Liquidation threshold for discount cleanup">Liquidation Threshold</label>
+                            <input type="number" pattern="^\d*(\.\d{0,2})?$" step="0.01" class="form-control" name="parameter1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-toggle="tooltip" title="Revenue multiplier for bestseller classification">Bestseller Multiplier</label>
+                            <input type="number" pattern="^\d*(\.\d{0,2})?$" step="0.01" class="form-control" name="parameter2" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-toggle="tooltip" title="Minimum volume threshold for classification">Min Volume Threshold</label>
+                            <input type="number" pattern="^\d*(\.\d{0,2})?$" step="0.01" class="form-control" name="parameter3" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-toggle="tooltip" title="Consistency threshold for core classification">Consistency Threshold</label>
+                            <input type="number" pattern="^\d*(\.\d{0,2})?$" step="0.01" class="form-control" name="parameter4" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label" data-toggle="tooltip" title="Algorithm run label">Algorithm Label</label>
+                            <input type="text" readonly="readonly" class="form-control" name="parameter5" id="parameter5" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="upload-modal-actions">
+                    <button type="button" class="btn-secondary-modern" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-primary-modern" id="update-algo">Update Parameters</button>
                 </div>
             </div>
         </div>
+    </div>
+</div>
 
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
@@ -98,6 +116,7 @@
 <script th:src="@{/static/js/app.js}"></script>
 <script th:src="@{/static/js/algoProperties.js}"></script>
 <script th:src="@{/static/js/dashboardTile.js}"></script>
+<script th:src="@{/static/js/noosResults.js}"></script>
 <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 </body>
 </html>
