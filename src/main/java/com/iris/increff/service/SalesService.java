@@ -5,7 +5,7 @@ import com.iris.increff.dao.SalesDao;
 import com.iris.increff.model.Sales;
 import com.iris.increff.model.SKU;
 import com.iris.increff.model.Store;
-import com.iris.increff.util.ApiException;
+import com.iris.increff.exception.ApiException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

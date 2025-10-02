@@ -3,7 +3,7 @@ package com.iris.increff.service;
 import com.iris.increff.controller.UploadResponse;
 import com.iris.increff.dao.StoreDao;
 import com.iris.increff.model.Store;
-import com.iris.increff.util.ApiException;
+import com.iris.increff.exception.ApiException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

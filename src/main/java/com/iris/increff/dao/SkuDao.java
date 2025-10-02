@@ -82,7 +82,8 @@ public class SkuDao {
      */
     public void deleteAll() {
         entityManager.createQuery("DELETE FROM SKU").executeUpdate();
-        entityManager.createNativeQuery("ALTER TABLE skus AUTO_INCREMENT = 1").executeUpdate();
+        // Skip auto-increment reset - not essential for functionality
+        // and causes database compatibility issues
     }
 
     /**

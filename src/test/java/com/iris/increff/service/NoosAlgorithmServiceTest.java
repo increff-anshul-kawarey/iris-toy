@@ -3,7 +3,7 @@ package com.iris.increff.service;
 import com.iris.increff.AbstractUnitTest;
 import com.iris.increff.dao.*;
 import com.iris.increff.model.*;
-import com.iris.increff.util.ApiException;
+import com.iris.increff.exception.ApiException;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;

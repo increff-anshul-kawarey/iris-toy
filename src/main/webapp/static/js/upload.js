@@ -163,8 +163,9 @@ function createTableRow(type,uploadFile)
 }
 function downloadDataFile(id)
 {
-	url=getUploadUrl()+"/download/"+id
-	window.open(url, '_blank').focus();
+	// Use async download endpoints
+	url=getUploadUrl()+"/download/"+id+"/async"
+	downloadAsync(url, id);
 }
 
 $(document).ready(getUploadList);

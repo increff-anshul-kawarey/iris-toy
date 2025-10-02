@@ -1,7 +1,7 @@
 package com.iris.increff.controller;
 
 import com.iris.increff.model.MessageData;
-import com.iris.increff.util.ApiException;
+import com.iris.increff.exception.ApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;

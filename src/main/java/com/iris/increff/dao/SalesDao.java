@@ -108,7 +108,8 @@ public class SalesDao {
      */
     public void deleteAll() {
         entityManager.createQuery("DELETE FROM Sales").executeUpdate();
-        entityManager.createNativeQuery("ALTER TABLE sales AUTO_INCREMENT = 1").executeUpdate();
+        // Skip auto-increment reset - not essential for functionality
+        // and causes database compatibility issues
         
     }
 

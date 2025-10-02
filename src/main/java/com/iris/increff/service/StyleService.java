@@ -3,7 +3,7 @@ package com.iris.increff.service;
 import com.iris.increff.controller.UploadResponse;
 import com.iris.increff.dao.StyleDao;
 import com.iris.increff.model.Style;
-import com.iris.increff.util.ApiException;
+import com.iris.increff.exception.ApiException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -101,13 +101,14 @@ public class StyleService {
             response.setErrors(errors);
             response.setMessages(messages);
             response.setErrorCount(errors.size());
-            throw new RuntimeException("Failed to save styles to database", e);
+            return response;
         }
 
         response.setSuccess(true);
         response.setErrors(errors);
         response.setMessages(messages);
         response.setRecordCount(stylesToSave.size());
+        response.setErrorCount(errors.size());
         return response;
     }
 

@@ -322,11 +322,13 @@ function updateNoosModalContent(content) {
 }
 
 /**
- * Download NOOS results as TSV
+ * Download NOOS results as TSV (Async)
  */
 function downloadNoosResults() {
     console.log('Downloading NOOS results...');
-    window.open(getRunUrl() + '/results/noos/download', '_blank');
+    // Use async download endpoint
+    var url = getUploadUrl() + '/download/noos/async';
+    downloadAsync(url, 'noos');
 }
 
 /**

@@ -3,12 +3,15 @@ package com.iris.increff.controller;
 import com.iris.increff.dao.TaskDao;
 import com.iris.increff.model.Task;
 import com.iris.increff.service.AsyncUploadService;
+import com.iris.increff.service.AsyncDownloadService;
 import com.iris.increff.service.StyleService;
 import com.iris.increff.service.StoreService;
 import com.iris.increff.service.SkuService;
 import com.iris.increff.service.SalesService;
+import com.iris.increff.service.FileProcessingService;
+import com.iris.increff.config.TsvProperties;
 import com.iris.increff.util.ProcessTsv;
-import com.iris.increff.util.ApiException;
+import com.iris.increff.exception.ApiException;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +45,15 @@ public class FileController {
     private SalesService salesService;
 
     @Autowired
+    private FileProcessingService fileProcessingService;
+
+    @Autowired
     private AsyncUploadService asyncUploadService;
+    @Autowired
+    private TsvProperties tsvProperties;
+
+    @Autowired
+    private AsyncDownloadService asyncDownloadService;
 
     @Autowired
     private TaskDao taskDao;
@@ -52,7 +63,7 @@ public class FileController {
     public ResponseEntity<?> uploadStylesTsv(@RequestPart("file") MultipartFile file) {
         try {
             // Parse TSV using existing utility
-            ArrayList<HashMap<String, String>> tsvData = ProcessTsv.processTsv(file, ProcessTsv.stylesHeaders);
+            ArrayList<HashMap<String, String>> tsvData = fileProcessingService.processTsv(file, tsvProperties.getStylesHeaders());
             
             // Process and save via service
             UploadResponse result = styleService.processAndSaveStyles(tsvData);
@@ -80,7 +91,7 @@ public class FileController {
     @RequestMapping(value = "/api/file/upload/stores", method = RequestMethod.POST)
     public ResponseEntity<?> uploadStoresTsv(@RequestPart("file") MultipartFile file) {
         try {
-            ArrayList<HashMap<String, String>> tsvData = ProcessTsv.processTsv(file, ProcessTsv.storeHeaders);
+            ArrayList<HashMap<String, String>> tsvData = fileProcessingService.processTsv(file, tsvProperties.getStoreHeaders());
             UploadResponse result = storeService.processAndSaveStores(tsvData);
 
             if (result.isSuccess()) {
@@ -106,7 +117,7 @@ public class FileController {
     @RequestMapping(value = "/api/file/upload/skus", method = RequestMethod.POST)
     public ResponseEntity<?> uploadSkusTsv(@RequestPart("file") MultipartFile file) {
         try {
-            ArrayList<HashMap<String, String>> tsvData = ProcessTsv.processTsv(file, ProcessTsv.skuHeaders);
+            ArrayList<HashMap<String, String>> tsvData = fileProcessingService.processTsv(file, tsvProperties.getSkuHeaders());
             UploadResponse result = skuService.processAndSaveSKUs(tsvData);
 
             if (result.isSuccess()) {
@@ -132,7 +143,7 @@ public class FileController {
     @RequestMapping(value = "/api/file/upload/sales", method = RequestMethod.POST)
     public ResponseEntity<?> uploadSalesTsv(@RequestPart("file") MultipartFile file) {
         try {
-            ArrayList<HashMap<String, String>> tsvData = ProcessTsv.processTsv(file, ProcessTsv.salesHeaders);
+            ArrayList<HashMap<String, String>> tsvData = fileProcessingService.processTsv(file, tsvProperties.getSalesHeaders());
             UploadResponse result = salesService.processAndSaveSales(tsvData);
 
             if (result.isSuccess()) {
@@ -240,28 +251,28 @@ public class FileController {
     @RequestMapping(path = "/api/file/download/styles", method = RequestMethod.GET)
     public void downloadStylesData(HttpServletResponse response) throws IOException {
         List<com.iris.increff.model.Style> styles = styleService.getAllStyles();
-        ProcessTsv.createStylesDataResponse(styles, response);
+        ProcessTsv.createStylesDataResponse(styles, response, tsvProperties.getStylesHeaders());
     }
 
     @ApiOperation(value = "Download Stores data as TSV")
     @RequestMapping(path = "/api/file/download/stores", method = RequestMethod.GET)
     public void downloadStoresData(HttpServletResponse response) throws IOException {
         List<com.iris.increff.model.Store> stores = storeService.getAllStores();
-        ProcessTsv.createStoresDataResponse(stores, response);
+        ProcessTsv.createStoresDataResponse(stores, response, tsvProperties.getStoreHeaders());
     }
 
     @ApiOperation(value = "Download SKUs data as TSV")
     @RequestMapping(path = "/api/file/download/skus", method = RequestMethod.GET)
     public void downloadSkusData(HttpServletResponse response) throws IOException {
         List<com.iris.increff.model.SKU> skus = skuService.getAllSKUs();
-        ProcessTsv.createSkusDataResponse(skus, response);
+        ProcessTsv.createSkusDataResponse(skus, response, tsvProperties.getSkuHeaders());
     }
 
     @ApiOperation(value = "Download Sales data as TSV")
     @RequestMapping(path = "/api/file/download/sales", method = RequestMethod.GET)
     public void downloadSalesData(HttpServletResponse response) throws IOException {
         List<com.iris.increff.model.Sales> sales = salesService.getAllSales();
-        ProcessTsv.createSalesDataResponse(sales, response);
+        ProcessTsv.createSalesDataResponse(sales, response, tsvProperties.getSalesHeaders());
     }
 
     /**
@@ -370,6 +381,86 @@ public class FileController {
             
             return ResponseEntity.status(500).body(errorTask);
         }
+    }
+
+    // ==================== ASYNC DOWNLOAD ENDPOINTS ====================
+
+    @ApiOperation(value = "Download Styles TSV (Async)")
+    @RequestMapping(value = "/api/file/download/styles/async", method = RequestMethod.POST)
+    @Transactional
+    public ResponseEntity<Task> downloadStylesAsync() {
+        Task task = createDownloadTask("STYLES_DOWNLOAD");
+        asyncDownloadService.downloadStylesAsync(task.getId());
+        return ResponseEntity.accepted().body(task);
+    }
+
+    @ApiOperation(value = "Download Stores TSV (Async)")
+    @RequestMapping(value = "/api/file/download/stores/async", method = RequestMethod.POST)
+    @Transactional
+    public ResponseEntity<Task> downloadStoresAsync() {
+        Task task = createDownloadTask("STORES_DOWNLOAD");
+        asyncDownloadService.downloadStoresAsync(task.getId());
+        return ResponseEntity.accepted().body(task);
+    }
+
+    @ApiOperation(value = "Download SKUs TSV (Async)")
+    @RequestMapping(value = "/api/file/download/skus/async", method = RequestMethod.POST)
+    @Transactional
+    public ResponseEntity<Task> downloadSkusAsync() {
+        Task task = createDownloadTask("SKUS_DOWNLOAD");
+        asyncDownloadService.downloadSkusAsync(task.getId());
+        return ResponseEntity.accepted().body(task);
+    }
+
+    @ApiOperation(value = "Download Sales TSV (Async)")
+    @RequestMapping(value = "/api/file/download/sales/async", method = RequestMethod.POST)
+    @Transactional
+    public ResponseEntity<Task> downloadSalesAsync() {
+        Task task = createDownloadTask("SALES_DOWNLOAD");
+        asyncDownloadService.downloadSalesAsync(task.getId());
+        return ResponseEntity.accepted().body(task);
+    }
+
+    @ApiOperation(value = "Download NOOS Results TSV (Async)")
+    @RequestMapping(value = "/api/file/download/noos/async", method = RequestMethod.POST)
+    @Transactional
+    public ResponseEntity<Task> downloadNoosAsync(@RequestParam(required = false) Long runId) {
+        Task task = createDownloadTask("NOOS_DOWNLOAD");
+        asyncDownloadService.downloadNoosResultsAsync(task.getId(), runId);
+        return ResponseEntity.accepted().body(task);
+    }
+
+    @ApiOperation(value = "Stream async task result TSV")
+    @RequestMapping(value = "/api/tasks/{taskId}/result", method = RequestMethod.GET)
+    public ResponseEntity<?> streamTaskResult(@PathVariable Long taskId, HttpServletResponse response) {
+        Task task = taskDao.select(taskId);
+        if (task == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!"COMPLETED".equals(task.getStatus()) || task.getResultUrl() == null) {
+            return ResponseEntity.status(409).body("Task not completed yet");
+        }
+        try {
+            File file = new File(task.getResultUrl());
+            if (!file.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+            ProcessTsv.createFileResponse(file, response);
+            return null; // Response handled via HttpServletResponse
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to stream result: " + e.getMessage());
+        }
+    }
+
+    private Task createDownloadTask(String taskType) {
+        Task task = new Task();
+        task.setTaskType(taskType);
+        task.setStatus("PENDING");
+        task.setStartTime(new java.util.Date());
+        task.setUserId("system");
+        task.updateProgress(0.0, "PENDING", "Download task created, waiting to start...");
+        taskDao.insert(task);
+        return task;
     }
 
     /**

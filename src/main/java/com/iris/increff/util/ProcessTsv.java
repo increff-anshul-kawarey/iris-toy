@@ -10,68 +10,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 
 public class ProcessTsv {
-
-    public static String[] stylesHeaders = {"style", "brand", "category", "sub_category", "mrp", "gender"};
-    public static String[] skuHeaders = {"sku", "style", "size"};
-    public static String[] storeHeaders = {"branch", "city"};
-    public static String[] salesHeaders = {"day", "sku", "channel", "quantity", "discount", "revenue"};
-    public static String[] priceBucketHeaders = {"bucket_name", "min_value", "max_value"};
-
-
-    public static boolean verifyHeader(String[] headersActual, String[] headersExpected) throws ApiException {
-        if (!Arrays.equals(headersActual, headersExpected)) {
-            String headerString = Arrays.toString(headersActual);
-            String actualHeaderString = Arrays.toString(headersExpected);
-            throw new ApiException("Headers for File does Not Match Expected Headers Headers for File " + headerString + "Headers Expected" + actualHeaderString);
-        }
-        return true;
-    }
-
-    public static ArrayList<HashMap<String, String>> processTsv(MultipartFile file, String[] headers) throws ApiException {
-        ArrayList<HashMap<String, String>> rowMaps = new ArrayList<>();
-        try {
-            if (file.getOriginalFilename().split("\\.").length!=2||!file.getOriginalFilename().split("\\.")[1].equals("tsv")) {
-                throw new ApiException("File is not of .tsv type");
-            }
-            InputStream inputStream = file.getInputStream();
-            BufferedReader TSVReader = new BufferedReader(new InputStreamReader(inputStream));
-            String[] headersActual = TSVReader.readLine().split("\t");
-            ProcessTsv.verifyHeader(headersActual, headers);
-            String row = null;
-            int fileRowCount = 0;
-            while ((row = TSVReader.readLine()) != null) {
-                HashMap<String, String> rowMap = new HashMap<>();
-                String[] rowContent = row.split("\t");
-                if (rowContent.length == headers.length) {
-                    for (int i = 0; i < rowContent.length; i++) {
-                        rowMap.put(headers[i], rowContent[i]);
-                    }
-                }
-                rowMaps.add(rowMap);
-                fileRowCount = fileRowCount + 1;
-                if (fileRowCount > 500001) {
-                    throw new ApiException("File Row count is greater than 500000");
-                }
-            }
-            System.out.println(fileRowCount);
-        } catch (ApiException apiException) {
-            throw apiException;
-        } catch (Exception e) {
-            throw new ApiException("Some Error occured while Reading Tsv");
-        }
-        return rowMaps;
-    }
 
     public static ResponseEntity<byte[]> generateDataForTemplate(String[] headers, String filename) {
         StringBuilder head = new StringBuilder();
@@ -145,7 +90,7 @@ public class ProcessTsv {
     }
 
     // Data export methods for downloading actual database data
-    public static void createStylesDataResponse(List<Style> styles, HttpServletResponse response) throws IOException {
+    public static void createStylesDataResponse(List<Style> styles, HttpServletResponse response, String[] stylesHeaders) throws IOException {
         StringBuilder csvData = new StringBuilder();
         csvData.append(String.join("\t", stylesHeaders)).append("\n");
 
@@ -161,7 +106,7 @@ public class ProcessTsv {
         createCsvResponse(csvData.toString(), "styles_data.tsv", response);
     }
 
-    public static void createStoresDataResponse(List<Store> stores, HttpServletResponse response) throws IOException {
+    public static void createStoresDataResponse(List<Store> stores, HttpServletResponse response, String[] storeHeaders) throws IOException {
         StringBuilder csvData = new StringBuilder();
         csvData.append(String.join("\t", storeHeaders)).append("\n");
 
@@ -173,7 +118,7 @@ public class ProcessTsv {
         createCsvResponse(csvData.toString(), "stores_data.tsv", response);
     }
 
-    public static void createSkusDataResponse(List<SKU> skus, HttpServletResponse response) throws IOException {
+    public static void createSkusDataResponse(List<SKU> skus, HttpServletResponse response, String[] skuHeaders) throws IOException {
         StringBuilder csvData = new StringBuilder();
         csvData.append(String.join("\t", skuHeaders)).append("\n");
 
@@ -187,7 +132,7 @@ public class ProcessTsv {
         createCsvResponse(csvData.toString(), "skus_data.tsv", response);
     }
 
-    public static void createSalesDataResponse(List<Sales> sales, HttpServletResponse response) throws IOException {
+    public static void createSalesDataResponse(List<Sales> sales, HttpServletResponse response, String[] salesHeaders) throws IOException {
         StringBuilder csvData = new StringBuilder();
         csvData.append(String.join("\t", salesHeaders)).append("\n");
 

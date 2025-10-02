@@ -1,4 +1,4 @@
-package com.iris.increff.util;
+package com.iris.increff.exception;
 
 public class ApiException extends Exception {
 

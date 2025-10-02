@@ -82,7 +82,8 @@ public class StoreDao {
      */
     public void deleteAll() {
         entityManager.createQuery("DELETE FROM Store").executeUpdate();
-        entityManager.createNativeQuery("ALTER TABLE stores AUTO_INCREMENT = 1").executeUpdate();
+        // Skip auto-increment reset - not essential for functionality
+        // and causes database compatibility issues
     }
 
     /**

@@ -3,7 +3,7 @@ package com.iris.increff.service;
 import com.iris.increff.dao.NoosResultDao;
 import com.iris.increff.dao.TaskDao;
 import com.iris.increff.model.*;
-import com.iris.increff.util.ApiException;
+import com.iris.increff.exception.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -106,7 +106,6 @@ public class NoosAlgorithmService {
             task.updateProgress(5.0, "DATA_LOADING", "Loading sales data...");
             taskDao.update(task);
             System.out.println("📊 SYSTEM.OUT: Progress 5% - Loading sales data...");
-            Thread.sleep(2000); // 2 second delay to see progress
 
             List<Sales> allSales = getFilteredSales(parameters);
             logger.info("📊 Retrieved {} sales records for analysis", allSales.size());
@@ -119,7 +118,6 @@ public class NoosAlgorithmService {
             task.updateProgress(15.0, "DATA_LOADING", String.format("Loaded %d sales records", allSales.size()));
             taskDao.update(task);
             System.out.println("📊 SYSTEM.OUT: Progress 15% - Loaded " + allSales.size() + " sales records");
-            Thread.sleep(2000); // 2 second delay to see progress
 
             // Check for cancellation
             if (checkCancellation(task)) {
@@ -130,7 +128,6 @@ public class NoosAlgorithmService {
             task.updateProgress(20.0, "PROCESSING", "Applying liquidation cleanup...");
             taskDao.update(task);
             System.out.println("🧹 SYSTEM.OUT: Progress 20% - Applying liquidation cleanup...");
-            Thread.sleep(2000); // 2 second delay to see progress
 
             double liquidationThreshold = getParameterValue(parameters.getLiquidationThreshold(), DEFAULT_LIQUIDATION_THRESHOLD);
             List<Sales> cleanedSales = applyLiquidationCleanup(allSales, liquidationThreshold);
@@ -381,7 +378,7 @@ public class NoosAlgorithmService {
             // Get or create StyleSalesData
             String styleCode = style.getStyleCode();
             StyleSalesData styleData = styleMap.computeIfAbsent(styleCode, 
-                k -> new StyleSalesData(styleCode, style.getCategory(), style.getGender()));
+                k -> new StyleSalesData(styleCode, style.getCategory()));
 
             // Aggregate the sales data
             styleData.addSale(sale);
@@ -424,7 +421,7 @@ public class NoosAlgorithmService {
                     .average()
                     .orElse(0.0);
 
-            CategoryBenchmark benchmark = new CategoryBenchmark(category, totalRevenue, avgRevenuePerDay, avgConsistency);
+            CategoryBenchmark benchmark = new CategoryBenchmark(category, totalRevenue, avgRevenuePerDay);
             benchmarks.put(category, benchmark);
 
             logger.debug("🎯 Category {}: {} styles, ${:.2f} total revenue, ${:.2f} avg revenue/day, {:.1f}% avg consistency",
@@ -679,16 +676,14 @@ public class NoosAlgorithmService {
     private static class StyleSalesData {
         private String styleCode;
         private String category;
-        private String gender;
         private int totalQuantity = 0;
         private double totalRevenue = 0.0;
         private double totalDiscount = 0.0;
         private Set<String> salesDates = new HashSet<>();
 
-        public StyleSalesData(String styleCode, String category, String gender) {
+        public StyleSalesData(String styleCode, String category) {
             this.styleCode = styleCode;
             this.category = category;
-            this.gender = gender;
         }
 
         public void addSale(Sales sale) {
@@ -724,19 +719,15 @@ public class NoosAlgorithmService {
         private String category;
         private double totalRevenue;
         private double avgRevenuePerDay;
-        private double avgConsistency;
 
-        public CategoryBenchmark(String category, double totalRevenue, double avgRevenuePerDay, double avgConsistency) {
+        public CategoryBenchmark(String category, double totalRevenue, double avgRevenuePerDay) {
             this.category = category;
             this.totalRevenue = totalRevenue;
             this.avgRevenuePerDay = avgRevenuePerDay;
-            this.avgConsistency = avgConsistency;
         }
 
         // Getters
-        public String getCategory() { return category; }
         public double getTotalRevenue() { return totalRevenue; }
         public double getAvgRevenuePerDay() { return avgRevenuePerDay; }
-        public double getAvgConsistency() { return avgConsistency; }
     }
 }

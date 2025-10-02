@@ -120,6 +120,217 @@ function uploadAjax(url,formData)
     });
 }
 
+function uploadAjaxAsync(url,formData)
+{
+    $('#upload-modal').modal('toggle');
+
+    // Extract file type from URL for status updates
+    var fileType = url.split('/').pop().replace('/async', '');
+
+    // Set processing status
+    setUploadStatus(fileType, {processing: true});
+
+    $.ajax({
+        url: url,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (task) {
+            console.log("Async upload started:", task);
+            
+            if (task.status === "FAILED") {
+                setUploadStatus(fileType, {failed: true});
+                messageAlertFail("Upload failed: " + (task.errorMessage || "Unknown error"));
+                return;
+            }
+            
+            // Show success message for task creation
+            messageAlertPass("Upload started successfully! Processing in background...");
+            
+            // Start polling for task status
+            if (task.id) {
+                pollTaskStatus(task.id, fileType);
+            } else {
+                // Fallback: refresh status after a delay
+                setTimeout(function() {
+                    fetchDataStatus();
+                }, 2000);
+            }
+        },
+        error: function (errormessage) {
+            console.log("Async upload error:", errormessage);
+            // Clear processing status and set failed status
+            setUploadStatus(fileType, {failed: true});
+            
+            if (errormessage.status === 429) {
+                messageAlertFail("System is busy. Too many concurrent uploads. Please try again later.");
+            } else if (errormessage.responseJSON && errormessage.responseJSON.errorMessage) {
+                messageAlertFail("Upload failed: " + errormessage.responseJSON.errorMessage);
+            } else if (errormessage.responseJSON && errormessage.responseJSON.message) {
+                messageAlertFail(errormessage.responseJSON.message);
+            } else if (errormessage.responseText) {
+                messageAlertFail("Upload failed: " + errormessage.responseText);
+            } else {
+                messageAlertFail("Upload failed: " + errormessage.statusText);
+            }
+        }
+    });
+}
+
+function pollTaskStatus(taskId, fileType) {
+    var maxPolls = 60; // Maximum 5 minutes (60 * 5 seconds)
+    var pollCount = 0;
+    
+    function checkStatus() {
+        pollCount++;
+        
+        $.ajax({
+            url: getRunUrl() + '/tasks/' + taskId,
+            type: 'GET',
+            success: function(task) {
+                console.log("Task status poll " + pollCount + ":", task);
+                
+                if (task.status === "COMPLETED") {
+                    setUploadStatus(fileType, {processing: false});
+                    messageAlertPass("Upload completed successfully! " + (task.progressMessage || ""));
+                    fetchDataStatus(); // Refresh the data status
+                } else if (task.status === "FAILED") {
+                    setUploadStatus(fileType, {failed: true, processing: false});
+                    messageAlertFail("Upload failed: " + (task.errorMessage || "Unknown error"));
+                } else if (task.status === "PENDING" || task.status === "IN_PROGRESS") {
+                    // Update progress message if available
+                    if (task.progressMessage) {
+                        console.log("Progress: " + task.progressMessage);
+                    }
+                    
+                    // Continue polling if not exceeded max attempts
+                    if (pollCount < maxPolls) {
+                        setTimeout(checkStatus, 5000); // Poll every 5 seconds
+                    } else {
+                        messageAlertWarn("Upload is taking longer than expected. Please check the status later.");
+                        setUploadStatus(fileType, {processing: false});
+                    }
+                } else {
+                    // Unknown status, stop polling
+                    messageAlertWarn("Upload status unknown. Please refresh the page to check current status.");
+                    setUploadStatus(fileType, {processing: false});
+                }
+            },
+            error: function(err) {
+                console.log("Error polling task status:", err);
+                if (pollCount < maxPolls) {
+                    setTimeout(checkStatus, 5000); // Retry after 5 seconds
+                } else {
+                    messageAlertWarn("Unable to check upload status. Please refresh the page.");
+                    setUploadStatus(fileType, {processing: false});
+                }
+            }
+        });
+    }
+    
+    // Start polling after a short delay
+    setTimeout(checkStatus, 2000);
+}
+
+function downloadAsync(url, fileType) {
+    messageAlertInfo("Starting download preparation...");
+    
+    $.ajax({
+        url: url,
+        type: 'POST',
+        success: function(task) {
+            console.log("Async download started:", task);
+            
+            if (task.status === "FAILED") {
+                messageAlertFail("Download failed: " + (task.errorMessage || "Unknown error"));
+                return;
+            }
+            
+            messageAlertPass("Download preparation started! This may take a moment...");
+            
+            // Start polling for download completion
+            if (task.id) {
+                pollDownloadStatus(task.id, fileType);
+            } else {
+                messageAlertWarn("Unable to track download progress. Please try again.");
+            }
+        },
+        error: function(errormessage) {
+            console.log("Async download error:", errormessage);
+            
+            if (errormessage.status === 429) {
+                messageAlertFail("System is busy. Too many concurrent downloads. Please try again later.");
+            } else if (errormessage.responseJSON && errormessage.responseJSON.errorMessage) {
+                messageAlertFail("Download failed: " + errormessage.responseJSON.errorMessage);
+            } else if (errormessage.responseJSON && errormessage.responseJSON.message) {
+                messageAlertFail(errormessage.responseJSON.message);
+            } else if (errormessage.responseText) {
+                messageAlertFail("Download failed: " + errormessage.responseText);
+            } else {
+                messageAlertFail("Download failed: " + errormessage.statusText);
+            }
+        }
+    });
+}
+
+function pollDownloadStatus(taskId, fileType) {
+    var maxPolls = 60; // Maximum 5 minutes (60 * 5 seconds)
+    var pollCount = 0;
+    
+    function checkDownloadStatus() {
+        pollCount++;
+        
+        $.ajax({
+            url: getRunUrl() + '/tasks/' + taskId,
+            type: 'GET',
+            success: function(task) {
+                console.log("Download task status poll " + pollCount + ":", task);
+                
+                if (task.status === "COMPLETED") {
+                    messageAlertPass("Download ready! Starting file download...");
+                    // Trigger the actual file download
+                    if (task.resultUrl) {
+                        // Use the task result endpoint to stream the file
+                        var downloadUrl = getRunUrl() + '/tasks/' + taskId + '/result';
+                        window.open(downloadUrl, '_blank').focus();
+                    } else {
+                        messageAlertFail("Download completed but file not available. Please try again.");
+                    }
+                } else if (task.status === "FAILED") {
+                    messageAlertFail("Download failed: " + (task.errorMessage || "Unknown error"));
+                } else if (task.status === "PENDING" || task.status === "IN_PROGRESS") {
+                    // Update progress message if available
+                    if (task.progressMessage) {
+                        console.log("Download progress: " + task.progressMessage);
+                    }
+                    
+                    // Continue polling if not exceeded max attempts
+                    if (pollCount < maxPolls) {
+                        setTimeout(checkDownloadStatus, 5000); // Poll every 5 seconds
+                    } else {
+                        messageAlertWarn("Download is taking longer than expected. Please try again later.");
+                    }
+                } else {
+                    // Unknown status, stop polling
+                    messageAlertWarn("Download status unknown. Please try again.");
+                }
+            },
+            error: function(err) {
+                console.log("Error polling download task status:", err);
+                if (pollCount < maxPolls) {
+                    setTimeout(checkDownloadStatus, 5000); // Retry after 5 seconds
+                } else {
+                    messageAlertWarn("Unable to check download status. Please try again.");
+                }
+            }
+        });
+    }
+    
+    // Start polling after a short delay
+    setTimeout(checkDownloadStatus, 2000);
+}
+
 function ajaxRestApiCall(url, type) {
 	$.ajax({
 		url: url,
@@ -232,21 +443,25 @@ console.log(name)
 }
 function downloadReportData(reportName)
 {
-	var url = getReportUrl()+"/download/"+reportName; and 
+	// Reports use synchronous download (no async endpoint available yet)
+	var url = getReportUrl()+"/download/"+reportName;
 	window.open(url, '_blank').focus();
 }
 function downloadErrorFile(id)
 {
+	// Error files are simple static files - synchronous download is fine
 	url=getUploadUrl()+"/errors/"+id
 	window.open(url, '_blank').focus();
 }
 function downloadInputFile(id)
 {
+	// Input files are simple static files - synchronous download is fine
 	url=getUploadUrl()+"/input/"+id
 	window.open(url, '_blank').focus();
 }
 function downloadInputFileTemplate(id)
 {
+	// Template files are simple static files - synchronous download is fine
 	url=getUploadUrl()+"/template/"+id
 	window.open(url, '_blank').focus();
 }
@@ -282,8 +497,9 @@ function upload(id)
             return;
         }
         formData.append('file', $('input[type=file]')[0].files[0]);
-        url=getUploadUrl() + '/upload/'+id;
-        uploadAjax(url,formData)
+        // Use async endpoints for better performance and reliability
+        url=getUploadUrl() + '/upload/'+id+'/async';
+        uploadAjaxAsync(url,formData)
 		event.preventDefault();
         $('#upload-message-modal').on('hidden.bs.modal')
 }
