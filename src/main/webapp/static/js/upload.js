@@ -55,8 +55,12 @@ function createUploadCard(statusData, uploadFile) {
     var secondaryMessage = '';
     var cardClass = 'upload-card-modern';
 
+    // Log for debugging
+    console.log('Creating card for', uploadFile.id, 'with status:', statusData);
+
     // Determine status based on data existence and count
     // Processing takes priority over exists status
+    var showCancelButton = false;
     if (statusData && statusData.processing) {
         statusClass = 'status-processing';
         statusTitle = 'Processing in progress';
@@ -64,6 +68,8 @@ function createUploadCard(statusData, uploadFile) {
         primaryMessage = 'Your file is being processed';
         secondaryMessage = 'Estimated time remaining: ~2 minutes';
         cardClass += ' card-processing';
+        showCancelButton = true; // Show cancel button during processing
+        console.log('CANCEL BUTTON SHOULD SHOW for', uploadFile.id);
     } else if (statusData && statusData.failed) {
         statusClass = 'status-error';
         statusTitle = 'Processing paused';
@@ -76,7 +82,7 @@ function createUploadCard(statusData, uploadFile) {
         statusTitle = 'Processing completed';
         statusIcon = '<i class="fa fa-check-circle status-icon-large"></i>';
         primaryMessage = 'Your file is ready';
-        secondaryMessage = statusData.count + ' records uploaded successfully';
+        secondaryMessage = statusData.count + ' records available';
         cardClass += ' card-success';
     } else {
         statusClass = 'status-pending';
@@ -105,9 +111,15 @@ function createUploadCard(statusData, uploadFile) {
             // Action area
             '<div class="card-footer-modern">' +
                 '<div class="action-buttons">' +
-                    '<button type="button" class="btn btn-primary-modern" onclick="uploadModal(\''+uploadFile.id+'\',\''+uploadFile["Display Name"]+'\')">' +
-                        (statusData && statusData.failed ? 'Retry Upload' : 'Upload File') +
-                    '</button>' +
+                    (showCancelButton ? 
+                        '<button type="button" class="btn btn-danger" onclick="cancelTask(window.currentUploadTaskId)">' +
+                            '<i class="fa fa-times"></i> Cancel Upload' +
+                        '</button>' 
+                        : 
+                        '<button type="button" class="btn btn-primary-modern" onclick="uploadModal(\''+uploadFile.id+'\',\''+uploadFile["Display Name"]+'\')">' +
+                            (statusData && statusData.failed ? 'Retry Upload' : 'Upload File') +
+                        '</button>'
+                    ) +
                     '<button type="button" class="btn btn-secondary-modern" onclick="downloadDataFile(\''+uploadFile.id+'\')" ' + (statusData && statusData.exists ? '' : 'disabled') + '>' +
                         'Download Data' +
                     '</button>' +

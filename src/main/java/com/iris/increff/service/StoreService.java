@@ -28,7 +28,8 @@ public class StoreService {
     private StoreDao storeDao;
 
     @Autowired
-    private DataClearingService dataClearingService;
+    private AuditService auditService;
+
     /**
      * Process and save stores from TSV data.
      * Expected TSV format: branch, city
@@ -80,17 +81,44 @@ public class StoreService {
 
         // Second pass: Database operations (only if all data is valid)
         try {
-            // Clear existing data (single-user scenario as per PRD)
-            messages.add("Clearing existing data for Store upload (includes dependent Sales)");
-            dataClearingService.clearDataForStoreUpload();
-            messages.add("Data clearing completed");
+            // UPSERT logic: Update existing stores or insert new ones
+            // This preserves existing data not in the upload file
+            int updatedCount = 0;
+            int insertedCount = 0;
 
-            // Save new data in batch
-            if (!storesToSave.isEmpty()) {
-                messages.add("Saving " + storesToSave.size() + " stores to database");
-                storeDao.saveAll(storesToSave);
-                messages.add("Stores upload completed successfully");
+            messages.add("Processing " + storesToSave.size() + " stores with UPSERT logic");
+            
+            for (Store newStore : storesToSave) {
+                Store existingStore = storeDao.findByBranch(newStore.getBranch());
+                
+                if (existingStore != null) {
+                    // UPDATE: Merge new data into existing record
+                    StringBuilder changes = new StringBuilder();
+                    if (!existingStore.getCity().equals(newStore.getCity())) {
+                        changes.append("City: ").append(existingStore.getCity()).append(" → ").append(newStore.getCity()).append("; ");
+                    }
+                    
+                    existingStore.setCity(newStore.getCity());
+                    storeDao.save(existingStore);
+                    updatedCount++;
+                    
+                    // Audit log the update
+                    if (changes.length() > 0) {
+                        auditService.logAction("Store", existingStore.getId(), "UPDATE", 
+                            changes.toString(), "system");
+                    }
+                } else {
+                    // INSERT: New store
+                    storeDao.save(newStore);
+                    insertedCount++;
+                    
+                    // Audit log the insert
+                    auditService.logAction("Store", newStore.getId(), "INSERT", 
+                        "New store created: " + newStore.getBranch(), "system");
+                }
             }
+            
+            messages.add("Stores upload completed: " + insertedCount + " inserted, " + updatedCount + " updated");
 
         } catch (Exception e) {
             errors.add("Database error: " + e.getMessage());

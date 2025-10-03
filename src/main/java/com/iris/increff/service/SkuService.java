@@ -30,9 +30,10 @@ public class SkuService {
     private SkuDao skuDao;
 
     @Autowired
-    private DataClearingService dataClearingService;
-    @Autowired
     private StyleService styleService;
+
+    @Autowired
+    private AuditService auditService;
 
     /**
      * Process and save SKUs from TSV data.
@@ -85,17 +86,48 @@ public class SkuService {
 
         // Second pass: Database operations (only if all data is valid)
         try {
-            // Clear existing data (single-user scenario as per PRD)
-            messages.add("Clearing existing data for SKU upload (includes dependent Sales)");
-            dataClearingService.clearDataForSkuUpload();
-            messages.add("Data clearing completed");
+            // UPSERT logic: Update existing SKUs or insert new ones
+            // This preserves existing data not in the upload file
+            int updatedCount = 0;
+            int insertedCount = 0;
 
-            // Save new data in batch
-            if (!skusToSave.isEmpty()) {
-                messages.add("Saving " + skusToSave.size() + " SKUs to database");
-                skuDao.saveAll(skusToSave);
-                messages.add("SKUs upload completed successfully");
+            messages.add("Processing " + skusToSave.size() + " SKUs with UPSERT logic");
+            
+            for (SKU newSku : skusToSave) {
+                SKU existingSku = skuDao.findBySku(newSku.getSku());
+                
+                if (existingSku != null) {
+                    // UPDATE: Merge new data into existing record
+                    StringBuilder changes = new StringBuilder();
+                    if (!existingSku.getStyleId().equals(newSku.getStyleId())) {
+                        changes.append("StyleID: ").append(existingSku.getStyleId()).append(" → ").append(newSku.getStyleId()).append("; ");
+                    }
+                    if (!existingSku.getSize().equals(newSku.getSize())) {
+                        changes.append("Size: ").append(existingSku.getSize()).append(" → ").append(newSku.getSize()).append("; ");
+                    }
+                    
+                    existingSku.setStyleId(newSku.getStyleId());
+                    existingSku.setSize(newSku.getSize());
+                    skuDao.save(existingSku);
+                    updatedCount++;
+                    
+                    // Audit log the update
+                    if (changes.length() > 0) {
+                        auditService.logAction("SKU", existingSku.getId(), "UPDATE", 
+                            changes.toString(), "system");
+                    }
+                } else {
+                    // INSERT: New SKU
+                    skuDao.save(newSku);
+                    insertedCount++;
+                    
+                    // Audit log the insert
+                    auditService.logAction("SKU", newSku.getId(), "INSERT", 
+                        "New SKU created: " + newSku.getSku(), "system");
+                }
             }
+            
+            messages.add("SKUs upload completed: " + insertedCount + " inserted, " + updatedCount + " updated");
 
         } catch (Exception e) {
             errors.add("Database error: " + e.getMessage());

@@ -63,6 +63,18 @@ public class AlgorithmParametersDao {
     }
 
     /**
+     * Get recent parameter sets (active and inactive), ordered by last updated
+     */
+    public List<AlgorithmParameters> findRecentSets(int limit) {
+        TypedQuery<AlgorithmParameters> query = entityManager.createQuery(
+            "SELECT a FROM AlgorithmParameters a ORDER BY a.lastUpdatedDate DESC",
+            AlgorithmParameters.class
+        );
+        query.setMaxResults(limit);
+        return query.getResultList();
+    }
+
+    /**
      * Get default parameters (fallback if no parameter set exists)
      */
     @Transactional

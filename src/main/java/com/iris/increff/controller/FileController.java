@@ -58,6 +58,15 @@ public class FileController {
     @Autowired
     private TaskDao taskDao;
 
+    @Autowired
+    private com.iris.increff.service.TaskService taskService;
+
+    @Autowired
+    private com.iris.increff.service.DataClearingService dataClearingService;
+
+    @javax.persistence.PersistenceContext
+    private javax.persistence.EntityManager entityManager;
+
     @ApiOperation(value = "Upload Styles TSV")
     @RequestMapping(value = "/api/file/upload/styles", method = RequestMethod.POST)
     public ResponseEntity<?> uploadStylesTsv(@RequestPart("file") MultipartFile file) {
@@ -247,6 +256,56 @@ public class FileController {
         }
     }
 
+    /**
+     * Clear all data in the database.
+     * This provides an explicit "fresh start" operation for testing/development scenarios.
+     * Respects foreign key constraints by clearing in proper dependency order.
+     * 
+     * WARNING: This is a destructive operation that cannot be undone.
+     * Should be used with caution and only when you want to completely reset the database.
+     */
+    @ApiOperation(value = "Clear all data from database (fresh start)")
+    @RequestMapping(path = "/api/data/clear-all", method = RequestMethod.DELETE)
+    @Transactional
+    public ResponseEntity<?> clearAllData() {
+        try {
+            // Get counts before clearing (for response message)
+            long salesCount = salesService.getSalesCount();
+            int skuCount = skuService.getAllSKUs().size();
+            int styleCount = styleService.getAllStyles().size();
+            int storeCount = storeService.getAllStores().size();
+            
+            // Clear all data in proper dependency order
+            dataClearingService.clearAllData();
+            
+            // Build response message
+            HashMap<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "All data cleared successfully");
+            response.put("deletedRecords", createDeletedRecordsMap(salesCount, skuCount, styleCount, storeCount));
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            HashMap<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Error clearing data: " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
+    /**
+     * Helper method to create a map of deleted record counts
+     */
+    private HashMap<String, Object> createDeletedRecordsMap(long sales, int skus, int styles, int stores) {
+        HashMap<String, Object> deleted = new HashMap<>();
+        deleted.put("sales", sales);
+        deleted.put("skus", skus);
+        deleted.put("styles", styles);
+        deleted.put("stores", stores);
+        deleted.put("total", sales + skus + styles + stores);
+        return deleted;
+    }
+
     @ApiOperation(value = "Download Styles data as TSV")
     @RequestMapping(path = "/api/file/download/styles", method = RequestMethod.GET)
     public void downloadStylesData(HttpServletResponse response) throws IOException {
@@ -387,45 +446,53 @@ public class FileController {
 
     @ApiOperation(value = "Download Styles TSV (Async)")
     @RequestMapping(value = "/api/file/download/styles/async", method = RequestMethod.POST)
-    @Transactional
     public ResponseEntity<Task> downloadStylesAsync() {
+        System.out.println("📥 CONTROLLER: Creating download task for Styles");
         Task task = createDownloadTask("STYLES_DOWNLOAD");
+        
+        // Persist task in a NEW transaction that commits immediately
+        task = taskService.createTaskInNewTransaction(task);
+        System.out.println("📥 CONTROLLER: Task created and committed with ID: " + task.getId());
+        
+        // Now call async service - task is already visible in database
         asyncDownloadService.downloadStylesAsync(task.getId());
+        System.out.println("📥 CONTROLLER: Async service called, returning task");
+        
         return ResponseEntity.accepted().body(task);
     }
 
     @ApiOperation(value = "Download Stores TSV (Async)")
     @RequestMapping(value = "/api/file/download/stores/async", method = RequestMethod.POST)
-    @Transactional
     public ResponseEntity<Task> downloadStoresAsync() {
         Task task = createDownloadTask("STORES_DOWNLOAD");
+        task = taskService.createTaskInNewTransaction(task);
         asyncDownloadService.downloadStoresAsync(task.getId());
         return ResponseEntity.accepted().body(task);
     }
 
     @ApiOperation(value = "Download SKUs TSV (Async)")
     @RequestMapping(value = "/api/file/download/skus/async", method = RequestMethod.POST)
-    @Transactional
     public ResponseEntity<Task> downloadSkusAsync() {
         Task task = createDownloadTask("SKUS_DOWNLOAD");
+        task = taskService.createTaskInNewTransaction(task);
         asyncDownloadService.downloadSkusAsync(task.getId());
         return ResponseEntity.accepted().body(task);
     }
 
     @ApiOperation(value = "Download Sales TSV (Async)")
     @RequestMapping(value = "/api/file/download/sales/async", method = RequestMethod.POST)
-    @Transactional
     public ResponseEntity<Task> downloadSalesAsync() {
         Task task = createDownloadTask("SALES_DOWNLOAD");
+        task = taskService.createTaskInNewTransaction(task);
         asyncDownloadService.downloadSalesAsync(task.getId());
         return ResponseEntity.accepted().body(task);
     }
 
     @ApiOperation(value = "Download NOOS Results TSV (Async)")
     @RequestMapping(value = "/api/file/download/noos/async", method = RequestMethod.POST)
-    @Transactional
     public ResponseEntity<Task> downloadNoosAsync(@RequestParam(required = false) Long runId) {
         Task task = createDownloadTask("NOOS_DOWNLOAD");
+        task = taskService.createTaskInNewTransaction(task);
         asyncDownloadService.downloadNoosResultsAsync(task.getId(), runId);
         return ResponseEntity.accepted().body(task);
     }
@@ -452,6 +519,10 @@ public class FileController {
         }
     }
 
+    /**
+     * Create download task object (does not persist)
+     * Caller is responsible for persisting the task
+     */
     private Task createDownloadTask(String taskType) {
         Task task = new Task();
         task.setTaskType(taskType);
@@ -459,7 +530,6 @@ public class FileController {
         task.setStartTime(new java.util.Date());
         task.setUserId("system");
         task.updateProgress(0.0, "PENDING", "Download task created, waiting to start...");
-        taskDao.insert(task);
         return task;
     }
 

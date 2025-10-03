@@ -29,8 +29,7 @@ public class StyleService {
     private StyleDao styleDao;
 
     @Autowired
-    private DataClearingService dataClearingService;
-
+    private AuditService auditService;
 
     /**
      * Process and save styles from TSV data.
@@ -83,17 +82,51 @@ public class StyleService {
 
         // Second pass: Database operations (only if all data is valid)
         try {
-            // Clear existing data (single-user scenario as per PRD)
-            messages.add("Clearing existing data for Style upload (includes dependent SKUs and Sales)");
-            dataClearingService.clearDataForStyleUpload();
-            messages.add("Data clearing completed");
+            // UPSERT logic: Update existing styles or insert new ones
+            // This preserves existing data not in the upload file
+            int updatedCount = 0;
+            int insertedCount = 0;
 
-            // Save new data in batch
-            if (!stylesToSave.isEmpty()) {
-                messages.add("Saving " + stylesToSave.size() + " styles to database");
-                styleDao.saveAll(stylesToSave);
-                messages.add("Styles upload completed successfully");
+            messages.add("Processing " + stylesToSave.size() + " styles with UPSERT logic");
+            
+            for (Style newStyle : stylesToSave) {
+                Style existingStyle = styleDao.findByStyleCode(newStyle.getStyleCode());
+                
+                if (existingStyle != null) {
+                    // UPDATE: Merge new data into existing record
+                    StringBuilder changes = new StringBuilder();
+                    if (!existingStyle.getMrp().equals(newStyle.getMrp())) {
+                        changes.append("MRP: ").append(existingStyle.getMrp()).append(" → ").append(newStyle.getMrp()).append("; ");
+                    }
+                    if (!existingStyle.getBrand().equals(newStyle.getBrand())) {
+                        changes.append("Brand: ").append(existingStyle.getBrand()).append(" → ").append(newStyle.getBrand()).append("; ");
+                    }
+                    
+                    existingStyle.setBrand(newStyle.getBrand());
+                    existingStyle.setCategory(newStyle.getCategory());
+                    existingStyle.setSubCategory(newStyle.getSubCategory());
+                    existingStyle.setMrp(newStyle.getMrp());
+                    existingStyle.setGender(newStyle.getGender());
+                    styleDao.save(existingStyle);
+                    updatedCount++;
+                    
+                    // Audit log the update
+                    if (changes.length() > 0) {
+                        auditService.logAction("Style", existingStyle.getId(), "UPDATE", 
+                            changes.toString(), "system");
+                    }
+                } else {
+                    // INSERT: New style
+                    styleDao.save(newStyle);
+                    insertedCount++;
+                    
+                    // Audit log the insert
+                    auditService.logAction("Style", newStyle.getId(), "INSERT", 
+                        "New style created: " + newStyle.getStyleCode(), "system");
+                }
             }
+            
+            messages.add("Styles upload completed: " + insertedCount + " inserted, " + updatedCount + " updated");
 
         } catch (Exception e) {
             errors.add("Database error: " + e.getMessage());

@@ -10,14 +10,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service for handling data clearing operations with proper dependency management.
- * Ensures foreign key constraints are respected when clearing data for uploads.
+ * Ensures foreign key constraints are respected when clearing data.
+ * 
+ * Usage Pattern (Updated):
+ * - Style/SKU/Store uploads now use UPSERT logic (no clearing needed during normal uploads)
+ * - Sales uploads use TRUNCATE (clearDataForSalesUpload) for complete replacement
+ * - clearAllData() available for explicit "fresh start" scenarios
  * 
  * Dependency Chain:
  * Sales → SKU, Store (sales references both)
  * SKU → Style (sku references style)
  * 
  * @author Your Name
- * @version 1.0
+ * @version 2.0
  * @since 2025-01-01
  */
 @Service
@@ -35,9 +40,15 @@ public class DataClearingService {
     @Autowired
     private StoreDao storeDao;
 
+    @Autowired
+    private AuditService auditService;
+
     /**
      * Clear data for Style upload - must clear in dependency order
      * Order: Sales (child) → SKUs (middle) → Styles (parent)
+     * 
+     * NOTE: This method is kept for backwards compatibility and "Clear All" functionality.
+     * Normal style uploads now use UPSERT logic and don't call this method.
      */
     @Transactional
     public void clearDataForStyleUpload() {
@@ -50,6 +61,9 @@ public class DataClearingService {
     /**
      * Clear data for Store upload - must clear dependent sales first
      * Order: Sales (child) → Stores (parent)
+     * 
+     * NOTE: This method is kept for backwards compatibility and "Clear All" functionality.
+     * Normal store uploads now use UPSERT logic and don't call this method.
      */
     @Transactional
     public void clearDataForStoreUpload() {
@@ -61,6 +75,9 @@ public class DataClearingService {
     /**
      * Clear data for SKU upload - must clear dependent sales first
      * Order: Sales (child) → SKUs (parent)
+     * 
+     * NOTE: This method is kept for backwards compatibility and "Clear All" functionality.
+     * Normal SKU uploads now use UPSERT logic and don't call this method.
      */
     @Transactional
     public void clearDataForSkuUpload() {
@@ -71,6 +88,9 @@ public class DataClearingService {
 
     /**
      * Clear data for Sales upload - no dependencies to worry about
+     * 
+     * This method is actively used for sales uploads (TRUNCATE mode).
+     * Sales data uses complete replacement rather than UPSERT for simplicity.
      */
     @Transactional
     public void clearDataForSalesUpload() {
@@ -79,14 +99,32 @@ public class DataClearingService {
     }
 
     /**
-     * Clear all data in proper dependency order (for testing/reset purposes)
+     * Clear all data in proper dependency order.
+     * Use this for explicit "fresh start" scenarios when you want to completely
+     * reset the database before loading a new complete dataset.
+     * 
+     * This should be triggered via explicit user action (e.g., "Clear All Data" button)
+     * rather than automatically during uploads.
      */
     @Transactional
     public void clearAllData() {
         System.out.println("Clearing all data - handling all dependencies...");
+        
+        // Get counts before deletion for audit log
+        Long salesCount = salesDao.getTotalSalesCount();
+        Long skuCount = skuDao.getTotalSkuCount();
+        Long styleCount = styleDao.getTotalStyleCount();
+        Long storeCount = storeDao.getTotalStoreCount();
+        
         salesDao.deleteAll();   // Clear deepest children first
         skuDao.deleteAll();     // Clear middle level
         styleDao.deleteAll();   // Clear parents
         storeDao.deleteAll();   // Independent parent
+        
+        // Audit log the clear all operation
+        String details = String.format("Cleared all data: %d sales, %d SKUs, %d styles, %d stores", 
+            salesCount, skuCount, styleCount, storeCount);
+        auditService.logBulkAction("System", "CLEAR_ALL_DATA", 
+            (int)(salesCount + skuCount + styleCount + storeCount), details, "system");
     }
 }

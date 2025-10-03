@@ -87,17 +87,18 @@ function uploadAjax(url,formData)
                     console.log("Upload errors:", data.errors);
                 }
             } else {
-                messageAlertPass(data.message || "Upload completed successfully");
+                // Extract UPSERT statistics from messages
+                var uploadSummary = extractUploadSummary(data.messages, fileType);
+                messageAlertPass(uploadSummary);
 
-                // Show processing messages if available
+                // Show detailed messages if available
                 if (data.messages && data.messages.length > 0) {
-                    // Show key messages to user
-                    var keyMessages = data.messages.filter(function(msg) {
-                        return msg.includes("completed") || msg.includes("Saving") || msg.includes("Clearing");
+                    var detailMessages = data.messages.filter(function(msg) {
+                        return msg.includes("Processing") || msg.includes("UPSERT");
                     });
-                    if (keyMessages.length > 0) {
+                    if (detailMessages.length > 0) {
                         setTimeout(function() {
-                            messageAlertPass("Details: " + keyMessages.join(". "));
+                            messageAlertPass("Details: " + detailMessages.join(". "));
                         }, 1000);
                     }
                 }
@@ -182,6 +183,10 @@ function pollTaskStatus(taskId, fileType) {
     var maxPolls = 60; // Maximum 5 minutes (60 * 5 seconds)
     var pollCount = 0;
     
+    // Store taskId globally so cancel button can access it
+    window.currentUploadTaskId = taskId;
+    window.currentUploadFileType = fileType;
+    
     function checkStatus() {
         pollCount++;
         
@@ -195,14 +200,21 @@ function pollTaskStatus(taskId, fileType) {
                     setUploadStatus(fileType, {processing: false});
                     messageAlertPass("Upload completed successfully! " + (task.progressMessage || ""));
                     fetchDataStatus(); // Refresh the data status
+                    window.currentUploadTaskId = null; // Clear task reference
                 } else if (task.status === "FAILED") {
                     setUploadStatus(fileType, {failed: true, processing: false});
                     messageAlertFail("Upload failed: " + (task.errorMessage || "Unknown error"));
-                } else if (task.status === "PENDING" || task.status === "IN_PROGRESS") {
+                    window.currentUploadTaskId = null; // Clear task reference
+                } else if (task.status === "CANCELLED") {
+                    setUploadStatus(fileType, {processing: false});
+                    messageAlertWarn("Upload was cancelled by user");
+                    fetchDataStatus(); // Refresh the data status
+                    window.currentUploadTaskId = null; // Clear task reference
+                } else if (task.status === "PENDING" || task.status === "RUNNING") {
                     // Update progress message if available
-                    if (task.progressMessage) {
-                        console.log("Progress: " + task.progressMessage);
-                    }
+                    var progressMsg = task.currentPhase || task.progressMessage || "";
+                    var progressPct = task.progressPercentage || 0;
+                    console.log("Progress: " + progressPct + "% - " + progressMsg);
                     
                     // Continue polling if not exceeded max attempts
                     if (pollCount < maxPolls) {
@@ -210,11 +222,13 @@ function pollTaskStatus(taskId, fileType) {
                     } else {
                         messageAlertWarn("Upload is taking longer than expected. Please check the status later.");
                         setUploadStatus(fileType, {processing: false});
+                        window.currentUploadTaskId = null;
                     }
                 } else {
                     // Unknown status, stop polling
                     messageAlertWarn("Upload status unknown. Please refresh the page to check current status.");
                     setUploadStatus(fileType, {processing: false});
+                    window.currentUploadTaskId = null;
                 }
             },
             error: function(err) {
@@ -224,6 +238,7 @@ function pollTaskStatus(taskId, fileType) {
                 } else {
                     messageAlertWarn("Unable to check upload status. Please refresh the page.");
                     setUploadStatus(fileType, {processing: false});
+                    window.currentUploadTaskId = null;
                 }
             }
         });
@@ -231,6 +246,35 @@ function pollTaskStatus(taskId, fileType) {
     
     // Start polling after a short delay
     setTimeout(checkStatus, 2000);
+}
+
+/**
+ * Cancel the currently running task
+ */
+function cancelTask(taskId) {
+    if (!taskId) {
+        messageAlertFail("No task to cancel");
+        return;
+    }
+    
+    if (!confirm("Are you sure you want to cancel this upload?")) {
+        return;
+    }
+    
+    console.log("Cancelling task:", taskId);
+    
+    $.ajax({
+        url: getRunUrl() + '/tasks/' + taskId + '/cancel',
+        type: 'POST',
+        success: function(response) {
+            console.log("Cancellation requested for task:", taskId);
+            messageAlertInfo("Cancellation requested. The task will stop shortly...");
+        },
+        error: function(err) {
+            console.log("Error cancelling task:", err);
+            messageAlertFail("Failed to cancel task: " + (err.responseText || "Unknown error"));
+        }
+    });
 }
 
 function downloadAsync(url, fileType) {
@@ -278,6 +322,9 @@ function pollDownloadStatus(taskId, fileType) {
     var maxPolls = 60; // Maximum 5 minutes (60 * 5 seconds)
     var pollCount = 0;
     
+    // Store taskId for potential cancellation
+    window.currentDownloadTaskId = taskId;
+    
     function checkDownloadStatus() {
         pollCount++;
         
@@ -289,30 +336,37 @@ function pollDownloadStatus(taskId, fileType) {
                 
                 if (task.status === "COMPLETED") {
                     messageAlertPass("Download ready! Starting file download...");
+                    window.currentDownloadTaskId = null; // Clear task reference
                     // Trigger the actual file download
                     if (task.resultUrl) {
                         // Use the task result endpoint to stream the file
                         var downloadUrl = getRunUrl() + '/tasks/' + taskId + '/result';
-                        window.open(downloadUrl, '_blank').focus();
+                        triggerFileDownload(downloadUrl);
                     } else {
                         messageAlertFail("Download completed but file not available. Please try again.");
                     }
                 } else if (task.status === "FAILED") {
                     messageAlertFail("Download failed: " + (task.errorMessage || "Unknown error"));
-                } else if (task.status === "PENDING" || task.status === "IN_PROGRESS") {
+                    window.currentDownloadTaskId = null; // Clear task reference
+                } else if (task.status === "CANCELLED") {
+                    messageAlertWarn("Download was cancelled by user");
+                    window.currentDownloadTaskId = null; // Clear task reference
+                } else if (task.status === "PENDING" || task.status === "RUNNING") {
                     // Update progress message if available
-                    if (task.progressMessage) {
-                        console.log("Download progress: " + task.progressMessage);
-                    }
+                    var progressMsg = task.currentPhase || task.progressMessage || "";
+                    var progressPct = task.progressPercentage || 0;
+                    console.log("Download progress: " + progressPct + "% - " + progressMsg);
                     
                     // Continue polling if not exceeded max attempts
                     if (pollCount < maxPolls) {
                         setTimeout(checkDownloadStatus, 5000); // Poll every 5 seconds
                     } else {
                         messageAlertWarn("Download is taking longer than expected. Please try again later.");
+                        window.currentDownloadTaskId = null;
                     }
                 } else {
                     // Unknown status, stop polling
+                    window.currentDownloadTaskId = null;
                     messageAlertWarn("Download status unknown. Please try again.");
                 }
             },
@@ -329,6 +383,28 @@ function pollDownloadStatus(taskId, fileType) {
     
     // Start polling after a short delay
     setTimeout(checkDownloadStatus, 2000);
+}
+
+// Safely trigger a file download without being blocked by pop-up blockers
+function triggerFileDownload(downloadUrl) {
+    try {
+        var win = window.open(downloadUrl, '_blank');
+        if (win && typeof win.focus === 'function') {
+            try { win.focus(); return; } catch (e) { /* ignore and fallback */ }
+        }
+    } catch (e) {
+        // ignore and fallback
+    }
+
+    // Fallback: hidden iframe allows multiple parallel downloads and avoids popup blockers
+    var iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = downloadUrl;
+    document.body.appendChild(iframe);
+    // Cleanup after a minute
+    setTimeout(function() {
+        try { document.body.removeChild(iframe); } catch (e) {}
+    }, 60000);
 }
 
 function ajaxRestApiCall(url, type) {
@@ -504,10 +580,152 @@ function upload(id)
         $('#upload-message-modal').on('hidden.bs.modal')
 }
 
+/**
+ * Extract upload summary from backend messages
+ * Handles both UPSERT (styles, SKUs, stores) and TRUNCATE (sales) patterns
+ */
+function extractUploadSummary(messages, fileType) {
+    if (!messages || messages.length === 0) {
+        return "Upload completed successfully";
+    }
+    
+    // Look for UPSERT summary: "X inserted, Y updated"
+    var upsertPattern = /(\d+)\s+inserted,\s+(\d+)\s+updated/i;
+    var truncatePattern = /Saving\s+(\d+)/i;
+    var completedPattern = /completed:\s+(\d+)\s+inserted,\s+(\d+)\s+updated/i;
+    
+    for (var i = 0; i < messages.length; i++) {
+        var msg = messages[i];
+        
+        // Check for completed message with counts
+        var completedMatch = msg.match(completedPattern);
+        if (completedMatch) {
+            var inserted = parseInt(completedMatch[1]);
+            var updated = parseInt(completedMatch[2]);
+            if (inserted > 0 && updated > 0) {
+                return "✓ Upload successful: " + inserted + " new records added, " + updated + " existing records updated";
+            } else if (inserted > 0) {
+                return "✓ Upload successful: " + inserted + " new records added";
+            } else if (updated > 0) {
+                return "✓ Upload successful: " + updated + " records updated";
+            }
+        }
+        
+        // Check for UPSERT pattern
+        var upsertMatch = msg.match(upsertPattern);
+        if (upsertMatch) {
+            var inserted = parseInt(upsertMatch[1]);
+            var updated = parseInt(upsertMatch[2]);
+            if (inserted > 0 && updated > 0) {
+                return "✓ Upload successful: " + inserted + " new records added, " + updated + " existing records updated";
+            } else if (inserted > 0) {
+                return "✓ Upload successful: " + inserted + " new records added";
+            } else if (updated > 0) {
+                return "✓ Upload successful: " + updated + " records updated";
+            }
+        }
+        
+        // Check for TRUNCATE pattern (sales)
+        var truncateMatch = msg.match(truncatePattern);
+        if (truncateMatch) {
+            var count = parseInt(truncateMatch[1]);
+            return "✓ Upload successful: " + count + " records replaced";
+        }
+    }
+    
+    return "✓ Upload completed successfully";
+}
 
+/**
+ * Clear all data from the database
+ * Shows confirmation dialog before proceeding
+ */
+function clearAllData() {
+    // Get current data counts for confirmation
+    $.ajax({
+        url: getUploadUrl() + '/status',
+        type: 'GET',
+        success: function(statusData) {
+            var totalRecords = 0;
+            var details = [];
+            
+            if (statusData.styles && statusData.styles.count > 0) {
+                totalRecords += statusData.styles.count;
+                details.push(statusData.styles.count + " styles");
+            }
+            if (statusData.skus && statusData.skus.count > 0) {
+                totalRecords += statusData.skus.count;
+                details.push(statusData.skus.count + " SKUs");
+            }
+            if (statusData.stores && statusData.stores.count > 0) {
+                totalRecords += statusData.stores.count;
+                details.push(statusData.stores.count + " stores");
+            }
+            if (statusData.sales && statusData.sales.count > 0) {
+                totalRecords += statusData.sales.count;
+                details.push(statusData.sales.count + " sales");
+            }
+            
+            if (totalRecords === 0) {
+                messageAlertFail("Database is already empty");
+                return;
+            }
+            
+            var confirmMessage = "⚠️ WARNING: This will permanently delete ALL data:\n\n" +
+                                details.join("\n") + "\n\n" +
+                                "Total: " + totalRecords + " records\n\n" +
+                                "This action CANNOT be undone!\n\n" +
+                                "Are you sure you want to proceed?";
+            
+            if (confirm(confirmMessage)) {
+                performClearAllData();
+            }
+        },
+        error: function(err) {
+            console.log("Error fetching status:", err);
+            // Fallback confirmation
+            if (confirm("⚠️ WARNING: This will delete ALL data from the database.\n\nThis action CANNOT be undone!\n\nAre you sure?")) {
+                performClearAllData();
+            }
+        }
+    });
+}
 
-
-
-
-
+/**
+ * Perform the actual clear all data operation
+ */
+function performClearAllData() {
+    $.ajax({
+        url: baseUrl + '/api/data/clear-all',
+        type: 'DELETE',
+        success: function(response) {
+            if (response.success) {
+                var deletedRecords = response.deletedRecords;
+                var message = "✓ All data cleared successfully!\n\n" +
+                             "Deleted: " + deletedRecords.total + " total records\n" +
+                             "- " + deletedRecords.sales + " sales\n" +
+                             "- " + deletedRecords.skus + " SKUs\n" +
+                             "- " + deletedRecords.styles + " styles\n" +
+                             "- " + deletedRecords.stores + " stores";
+                
+                messageAlertPass(message);
+                
+                // Refresh data status
+                if (typeof fetchDataStatus === 'function') {
+                    setTimeout(fetchDataStatus, 500);
+                }
+            } else {
+                messageAlertFail("Failed to clear data: " + response.message);
+            }
+        },
+        error: function(err) {
+            console.log("Clear all data error:", err);
+            if (err.responseJSON && err.responseJSON.message) {
+                messageAlertFail("Failed to clear data: " + err.responseJSON.message);
+            } else {
+                messageAlertFail("Failed to clear data. Please try again.");
+            }
+        }
+    });
+}
 

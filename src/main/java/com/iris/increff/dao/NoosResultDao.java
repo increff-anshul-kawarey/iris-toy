@@ -7,6 +7,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
 import java.util.List;
+import java.util.Date;
 
 
 @Repository
@@ -40,19 +41,34 @@ public class NoosResultDao {
         entityManager.clear();
     }
 
-    // Get the most recent NOOS results
+    // Get the most recent NOOS results (last run only)
     public List<NoosResult> getLatestResults() {
-        String hql = "FROM NoosResult ORDER BY calculatedDate DESC";
+        // Find the max calculatedDate (latest run timestamp)
+        Date maxDate = entityManager.createQuery(
+                "SELECT MAX(n.calculatedDate) FROM NoosResult n", Date.class)
+                .getSingleResult();
+        if (maxDate == null) return java.util.Collections.emptyList();
+        String hql = "FROM NoosResult WHERE calculatedDate = :dt ORDER BY styleRevContribution DESC";
         TypedQuery<NoosResult> query = entityManager.createQuery(hql, NoosResult.class);
-        query.setMaxResults(1000); // Limit to latest 1000 results
+        query.setParameter("dt", maxDate);
         return query.getResultList();
     }
 
     // Get results by specific algorithm run ID
     public List<NoosResult> getResultsByRunId(Long algorithmRunId) {
-        String hql = "FROM NoosResult WHERE algorithmRunId = :runId ORDER BY styleCode";
+        String hql = "FROM NoosResult WHERE algorithmRunId = :runId ORDER BY styleRevContribution DESC";
         TypedQuery<NoosResult> query = entityManager.createQuery(hql, NoosResult.class);
         query.setParameter("runId", algorithmRunId);
+        return query.getResultList();
+    }
+
+    // Get distinct recent run timestamps
+    public List<Date> getRecentRunDates(int limit) {
+        TypedQuery<Date> query = entityManager.createQuery(
+            "SELECT DISTINCT n.calculatedDate FROM NoosResult n ORDER BY n.calculatedDate DESC",
+            Date.class
+        );
+        query.setMaxResults(limit);
         return query.getResultList();
     }
 

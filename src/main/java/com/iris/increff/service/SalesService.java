@@ -41,6 +41,9 @@ public class SalesService {
 
     @Autowired
     private DataClearingService dataClearingService;
+
+    @Autowired
+    private AuditService auditService;
     /**
      * Expected date format in sales TSV files
      */
@@ -96,16 +99,32 @@ public class SalesService {
 
         // Second pass: Database operations (only if no critical errors)
         try {
-            // Clear existing data (single-user scenario as per PRD)
-            messages.add("Clearing existing data for Sales upload");
+            // TRUNCATE: Replace all sales data (intentional for testing/sample data scenarios)
+            // Unlike master data (Styles/SKUs/Stores), sales data uses complete replacement
+            // This is suitable for toy project testing where each upload is a complete test dataset
+            messages.add("Clearing existing sales data (complete replacement mode)");
+            
+            // Get count before deletion for audit log
+            Long previousCount = salesDao.getTotalSalesCount();
+            
             dataClearingService.clearDataForSalesUpload();
             messages.add("Data clearing completed");
+            
+            // Audit log the bulk deletion
+            if (previousCount > 0) {
+                auditService.logBulkAction("Sales", "BULK_DELETE", previousCount.intValue(), 
+                    "Cleared all sales before new upload", "system");
+            }
 
             // Save new data in batch
             if (!salesToSave.isEmpty()) {
                 messages.add("Saving " + salesToSave.size() + " sales records to database");
                 salesDao.saveAll(salesToSave);
                 messages.add("Sales upload completed successfully");
+                
+                // Audit log the bulk insert
+                auditService.logBulkAction("Sales", "BULK_INSERT", salesToSave.size(), 
+                    "Uploaded " + salesToSave.size() + " sales records", "system");
 
                 if (skippedCount > 0) {
                     messages.add("Note: " + skippedCount + " rows were skipped due to missing SKUs");

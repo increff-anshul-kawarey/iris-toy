@@ -173,6 +173,8 @@ public class NoosAlgorithmService {
             task.updateProgress(60.0, "CLASSIFICATION", "Classifying styles...");
             taskDao.update(task);
 
+            // Use a single timestamp for the run for better grouping
+            Date runTimestamp = new Date();
             for (StyleSalesData styleData : styleList) {
                 // Check for cancellation every 50 styles
                 if (processedStyles % 50 == 0 && checkCancellation(task)) {
@@ -180,6 +182,7 @@ public class NoosAlgorithmService {
                 }
 
                 NoosResult result = classifyStyle(styleData, parameters, categoryBenchmarks, taskId);
+                result.setCalculatedDate(runTimestamp);
                 results.add(result);
                 processedStyles++;
 
@@ -205,7 +208,7 @@ public class NoosAlgorithmService {
             taskDao.update(task);
 
             logger.info("💾 Saving {} NOOS results to database", results.size());
-            noosResultDao.deleteAll(); // Clear previous results
+            // Retain history: do not delete previous results
             noosResultDao.insertAll(results);
 
             // Count classifications for reporting
@@ -292,7 +295,7 @@ public class NoosAlgorithmService {
 
             // Step 6: Save results to database
             logger.info("💾 Saving {} NOOS results to database", results.size());
-            noosResultDao.deleteAll(); // Clear previous results
+            // Retain history: do not delete previous results
             noosResultDao.insertAll(results);
 
             // Step 7: Update task with success status

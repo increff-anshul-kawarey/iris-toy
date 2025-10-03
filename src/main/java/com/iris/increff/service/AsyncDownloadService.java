@@ -2,7 +2,6 @@ package com.iris.increff.service;
 
 import com.iris.increff.dao.*;
 import com.iris.increff.model.*;
-import com.iris.increff.util.ProcessTsv;
 import com.iris.increff.config.TsvProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,8 +50,9 @@ public class AsyncDownloadService {
     private TsvProperties tsvProperties;
 
     @Async("fileExecutor")
-    @Transactional(readOnly = true)
+    @Transactional
     public CompletableFuture<Task> downloadStylesAsync(Long taskId) {
+        logger.info("🚀 ASYNC THREAD STARTED: downloadStylesAsync for task {}", taskId);
         return generateSimpleTsv(taskId, "STYLES_DOWNLOAD", () -> {
             List<Style> styles = styleDao.findAll();
             StringBuilder csv = new StringBuilder();
@@ -70,8 +70,9 @@ public class AsyncDownloadService {
     }
 
     @Async("fileExecutor")
-    @Transactional(readOnly = true)
+    @Transactional
     public CompletableFuture<Task> downloadStoresAsync(Long taskId) {
+        logger.info("🚀 ASYNC THREAD STARTED: downloadStoresAsync for task {}", taskId);
         return generateSimpleTsv(taskId, "STORES_DOWNLOAD", () -> {
             List<Store> stores = storeDao.findAll();
             StringBuilder csv = new StringBuilder();
@@ -85,8 +86,9 @@ public class AsyncDownloadService {
     }
 
     @Async("fileExecutor")
-    @Transactional(readOnly = true)
+    @Transactional
     public CompletableFuture<Task> downloadSkusAsync(Long taskId) {
+        logger.info("🚀 ASYNC THREAD STARTED: downloadSkusAsync for task {}", taskId);
         return generateSimpleTsv(taskId, "SKUS_DOWNLOAD", () -> {
             List<SKU> skus = skuDao.findAll();
             StringBuilder csv = new StringBuilder();
@@ -102,8 +104,9 @@ public class AsyncDownloadService {
     }
 
     @Async("fileExecutor")
-    @Transactional(readOnly = true)
+    @Transactional
     public CompletableFuture<Task> downloadSalesAsync(Long taskId) {
+        logger.info("🚀 ASYNC THREAD STARTED: downloadSalesAsync for task {}", taskId);
         return generateSimpleTsv(taskId, "SALES_DOWNLOAD", () -> {
             List<Sales> sales = salesDao.findAll();
             StringBuilder csv = new StringBuilder();
@@ -125,8 +128,9 @@ public class AsyncDownloadService {
     }
 
     @Async("fileExecutor")
-    @Transactional(readOnly = true)
+    @Transactional
     public CompletableFuture<Task> downloadNoosResultsAsync(Long taskId, Long runId) {
+        logger.info("🚀 ASYNC THREAD STARTED: downloadNoosResultsAsync for task {}", taskId);
         return generateSimpleTsv(taskId, "NOOS_DOWNLOAD", () -> {
             List<NoosResult> results = (runId != null) ?
                     noosResultDao.getResultsByRunId(runId) :
