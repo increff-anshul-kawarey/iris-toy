@@ -6,6 +6,8 @@ import com.iris.increff.model.AlgoParametersData;
 import com.iris.increff.model.AuditLog;
 import com.iris.increff.dao.AuditLogDao;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +16,8 @@ import java.util.Objects;
 
 @Service
 public class AlgorithmParametersService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AlgorithmParametersService.class);
 
     @Autowired
     private AlgorithmParametersDao algorithmParametersDao;
@@ -28,7 +32,7 @@ public class AlgorithmParametersService {
 
     @Transactional(readOnly = true)
     public AlgorithmParameters get(String parameterSet) {
-        return algorithmParametersDao.findByParameterSet(parameterSet);
+        return algorithmParametersDao.findByParameterSetAny(parameterSet);
     }
 
     @Transactional
@@ -39,7 +43,7 @@ public class AlgorithmParametersService {
 
     @Transactional
     public void update(String parameterSet, AlgorithmParameters p) {
-        AlgorithmParameters existing = algorithmParametersDao.findByParameterSet(parameterSet);
+        AlgorithmParameters existing = algorithmParametersDao.findByParameterSetAny(parameterSet);
         if (existing == null) {
             // Or throw an exception
             return;
@@ -109,7 +113,7 @@ public class AlgorithmParametersService {
      */
     @Transactional(readOnly = true)
     public AlgoParametersData getParameterSetData(String parameterSet) {
-        AlgorithmParameters p = algorithmParametersDao.findByParameterSet(parameterSet);
+        AlgorithmParameters p = algorithmParametersDao.findByParameterSetAny(parameterSet);
         return p != null ? p.toAlgoParametersData() : null;
     }
 
@@ -126,6 +130,38 @@ public class AlgorithmParametersService {
             }
         }
         return out;
+    }
+
+    /**
+     * Update a specific parameter set by name from DTO.
+     */
+    @Transactional
+    public AlgoParametersData updateParameterSet(String parameterSetName, AlgoParametersData data) {
+        AlgorithmParameters existing = algorithmParametersDao.findByParameterSetAny(parameterSetName);
+        if (existing == null) {
+            return null;
+        }
+        existing.updateFromAlgoParametersData(data, "system");
+        algorithmParametersDao.save(existing);
+        return existing.toAlgoParametersData();
+    }
+
+    /**
+     * Activate a parameter set by name (deactivate others).
+     */
+    @Transactional
+    public AlgoParametersData activateParameterSet(String parameterSetName) {
+        List<AlgorithmParameters> all = algorithmParametersDao.findAll();
+        AlgorithmParameters target = null;
+        if (all != null) {
+            for (AlgorithmParameters p : all) {
+                boolean isTarget = p.getParameterSet().equals(parameterSetName);
+                p.setIsActive(isTarget);
+                algorithmParametersDao.save(p);
+                if (isTarget) target = p;
+            }
+        }
+        return target != null ? target.toAlgoParametersData() : null;
     }
 
     /**
@@ -158,7 +194,17 @@ public class AlgorithmParametersService {
         }
 
         AlgorithmParameters entity = new AlgorithmParameters();
-        entity.setParameterSet(parameterSetName != null ? parameterSetName : "run_" + System.currentTimeMillis());
+        String proposed = parameterSetName != null ? parameterSetName : data.getAlgorithmLabel();
+        if (proposed == null || proposed.trim().isEmpty()) {
+            proposed = "run_" + System.currentTimeMillis();
+        }
+        // Ensure uniqueness by suffixing with counter if needed
+        String uniqueName = proposed.trim();
+        int suffix = 1;
+        while (algorithmParametersDao.findByParameterSetAny(uniqueName) != null) {
+            uniqueName = proposed.trim() + "_" + (++suffix);
+        }
+        entity.setParameterSet(uniqueName);
         entity.setIsActive(true);
         entity.updateFromAlgoParametersData(data, "system");
         algorithmParametersDao.save(entity);

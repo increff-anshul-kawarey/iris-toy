@@ -4,6 +4,8 @@ import com.iris.increff.model.AlgoParametersData;
 import com.iris.increff.service.AlgorithmParametersService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,6 +14,8 @@ import java.util.List;
 @Api
 @RestController
 public class AlgoParametersController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AlgoParametersController.class);
 
     @Autowired
     private AlgorithmParametersService algorithmParametersService;
@@ -52,6 +56,18 @@ public class AlgoParametersController {
     @RequestMapping(path = "/api/algo/update", method = RequestMethod.POST)
     public AlgoParametersData updateCurrent(@RequestBody AlgoParametersData data) {
         return algorithmParametersService.updateCurrentParameters(data);
+    }
+
+    @ApiOperation(value = "Update a specific parameter set by name (DTO)")
+    @RequestMapping(path = "/api/algo/set/{parameterSet}", method = RequestMethod.PUT)
+    public AlgoParametersData updateSet(@PathVariable String parameterSet, @RequestBody AlgoParametersData data) {
+        return algorithmParametersService.updateParameterSet(parameterSet, data);
+    }
+
+    @ApiOperation(value = "Activate a parameter set by name")
+    @RequestMapping(path = "/api/algo/set/{parameterSet}/activate", method = RequestMethod.POST)
+    public AlgoParametersData activateSet(@PathVariable String parameterSet) {
+        return algorithmParametersService.activateParameterSet(parameterSet);
     }
 
     @ApiOperation(value = "Create a new parameter set and activate it")

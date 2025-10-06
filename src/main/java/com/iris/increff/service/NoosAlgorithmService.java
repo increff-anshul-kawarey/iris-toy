@@ -7,6 +7,7 @@ import com.iris.increff.exception.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.MDC;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -86,10 +87,9 @@ public class NoosAlgorithmService {
             return CompletableFuture.completedFuture(null);
         }
 
-        System.out.println("🚀 SYSTEM.OUT: Starting async NOOS Algorithm execution for task: " + taskId);
-        System.out.println("🔄 SYSTEM.OUT: Thread: " + Thread.currentThread().getName() + ", Task Status: " + task.getStatus());
-        logger.info("🚀 Starting async NOOS Algorithm execution for task: {}", taskId);
-        logger.info("🔄 Thread: {}, Task Status: {}", Thread.currentThread().getName(), task.getStatus());
+        MDC.put("taskId", String.valueOf(taskId));
+        logger.info("Starting async NOOS Algorithm execution for task: {} (thread: {}, status: {})",
+                   taskId, Thread.currentThread().getName(), task.getStatus());
 
         try {
             // Update task to RUNNING status
@@ -105,7 +105,7 @@ public class NoosAlgorithmService {
             // Phase 1: Data Loading (0% → 20%)
             task.updateProgress(5.0, "DATA_LOADING", "Loading sales data...");
             taskDao.update(task);
-            System.out.println("📊 SYSTEM.OUT: Progress 5% - Loading sales data...");
+            logger.debug("Progress 5% - Loading sales data...");
 
             List<Sales> allSales = getFilteredSales(parameters);
             logger.info("📊 Retrieved {} sales records for analysis", allSales.size());
@@ -117,7 +117,7 @@ public class NoosAlgorithmService {
 
             task.updateProgress(15.0, "DATA_LOADING", String.format("Loaded %d sales records", allSales.size()));
             taskDao.update(task);
-            System.out.println("📊 SYSTEM.OUT: Progress 15% - Loaded " + allSales.size() + " sales records");
+            logger.debug("Progress 15% - Loaded {} sales records", allSales.size());
 
             // Check for cancellation
             if (checkCancellation(task)) {
@@ -127,7 +127,7 @@ public class NoosAlgorithmService {
             // Phase 2: Data Processing (20% → 50%)
             task.updateProgress(20.0, "PROCESSING", "Applying liquidation cleanup...");
             taskDao.update(task);
-            System.out.println("🧹 SYSTEM.OUT: Progress 20% - Applying liquidation cleanup...");
+            logger.debug("Progress 20% - Applying liquidation cleanup...");
 
             double liquidationThreshold = getParameterValue(parameters.getLiquidationThreshold(), DEFAULT_LIQUIDATION_THRESHOLD);
             List<Sales> cleanedSales = applyLiquidationCleanup(allSales, liquidationThreshold);
@@ -225,7 +225,7 @@ public class NoosAlgorithmService {
             task.updateProgress(100.0, "COMPLETED", 
                               String.format("Completed: %d Core, %d Bestseller, %d Fashion", 
                                           coreCount, bestsellerCount, fashionCount));
-            System.out.println("✅ SYSTEM.OUT: Progress 100% - Completed: " + coreCount + " Core, " + bestsellerCount + " Bestseller, " + fashionCount + " Fashion");
+            logger.debug("Progress 100% - Completed: {} Core, {} Bestseller, {} Fashion", coreCount, bestsellerCount, fashionCount);
             completeTask(task, results.size(), coreCount, bestsellerCount, fashionCount);
 
             logger.info("✅ NOOS Algorithm completed successfully!");
@@ -237,7 +237,11 @@ public class NoosAlgorithmService {
             failTask(task, e.getMessage());
         }
 
-        return CompletableFuture.completedFuture(task);
+        try {
+            return CompletableFuture.completedFuture(task);
+        } finally {
+            MDC.remove("taskId");
+        }
     }
 
     /**
@@ -281,8 +285,12 @@ public class NoosAlgorithmService {
             List<NoosResult> results = new ArrayList<>();
             int coreCount = 0, bestsellerCount = 0, fashionCount = 0;
 
+            // Use a single timestamp for the run for better grouping
+            Date runTimestamp = new Date();
             for (StyleSalesData styleData : styleAggregates.values()) {
                 NoosResult result = classifyStyle(styleData, parameters, categoryBenchmarks, task.getId());
+                // Normalize calculated date to a single run timestamp for this execution
+                result.setCalculatedDate(runTimestamp);
                 results.add(result);
 
                 // Count classifications for reporting
@@ -647,28 +655,64 @@ public class NoosAlgorithmService {
     }
 
     /**
-     * Get latest NOOS results for display
+     * Get latest NOOS results for display (only latest run)
      */
     public List<NoosResult> getLatestResults() {
-        return noosResultDao.getLatestResults();
+        Long latestRunId = noosResultDao.getLatestRunId();
+        if (latestRunId == null) {
+            return Collections.emptyList();
+        }
+        return noosResultDao.getResultsByRunId(latestRunId);
     }
 
     /**
-     * Get NOOS results by type for analysis
+     * Get NOOS results by type for analysis (latest run)
      */
-    public List<NoosResult> getResultsByType(String type) {
-        return noosResultDao.getResultsByType(type);
+    public List<NoosResult> getResultsByTypeForLatestRun(String type) {
+        Long latestRunId = noosResultDao.getLatestRunId();
+        if (latestRunId == null) {
+            return Collections.emptyList();
+        }
+        return noosResultDao.getResultsByTypeAndRunId(type, latestRunId);
     }
 
     /**
-     * Get NOOS results count by type for dashboard
+     * Get NOOS results count by type for dashboard (latest run only)
      */
-    public Map<String, Long> getResultsCountByType() {
+    public Map<String, Long> getResultsCountByTypeForLatestRun() {
+        Long latestRunId = noosResultDao.getLatestRunId();
         Map<String, Long> counts = new HashMap<>();
-        counts.put("core", noosResultDao.getCountByType("core"));
-        counts.put("bestseller", noosResultDao.getCountByType("bestseller"));
-        counts.put("fashion", noosResultDao.getCountByType("fashion"));
+        if (latestRunId == null) {
+            counts.put("core", 0L);
+            counts.put("bestseller", 0L);
+            counts.put("fashion", 0L);
+            return counts;
+        }
+        counts.put("core", noosResultDao.getCountByTypeForRun("core", latestRunId));
+        counts.put("bestseller", noosResultDao.getCountByTypeForRun("bestseller", latestRunId));
+        counts.put("fashion", noosResultDao.getCountByTypeForRun("fashion", latestRunId));
         return counts;
+    }
+
+    /**
+     * Get recent NOOS run IDs (most recent first)
+     */
+    public List<Long> getRecentRunIds(int limit) {
+        return noosResultDao.getRecentRunIds(limit);
+    }
+
+    /**
+     * Get run execution date (max calculated date within the run)
+     */
+    public Date getRunDate(Long runId) {
+        return noosResultDao.getRunDate(runId);
+    }
+
+    /**
+     * Get NOOS results for a specific run id
+     */
+    public List<NoosResult> getResultsByRunId(Long runId) {
+        return noosResultDao.getResultsByRunId(runId);
     }
 
     // Helper classes for internal processing

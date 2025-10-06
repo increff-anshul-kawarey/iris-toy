@@ -8,6 +8,7 @@ import com.iris.increff.config.TsvProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.MDC;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -134,9 +135,8 @@ public class AsyncUploadService {
             return;
         }
 
-        System.out.println("📁 SYSTEM.OUT: Starting async " + fileType + " upload for task: " + taskId);
-        System.out.println("🔄 SYSTEM.OUT: Thread: " + Thread.currentThread().getName() + ", File: " + fileName);
-        logger.info("📁 Starting async {} upload for task: {}", fileType, taskId);
+        MDC.put("taskId", String.valueOf(taskId));
+        logger.info("Starting async {} upload for task: {} on thread {}", fileType, taskId, Thread.currentThread().getName());
 
         try {
             // Update task to RUNNING status
@@ -153,7 +153,7 @@ public class AsyncUploadService {
             // Phase 1: File Validation (0% → 20%)
             task.updateProgress(10.0, "VALIDATING", "Validating file format...");
             taskDao.update(task);
-            System.out.println("🔍 SYSTEM.OUT: Progress 10% - Validating file format...");
+            logger.debug("Progress 10% - Validating file format...");
 
             if (fileContent == null || fileContent.length == 0) {
                 failTask(task, "File is empty");
@@ -163,13 +163,13 @@ public class AsyncUploadService {
             // Phase 2: File Parsing (20% → 50%)
             task.updateProgress(20.0, "PARSING", "Parsing TSV file...");
             taskDao.update(task);
-            System.out.println("📊 SYSTEM.OUT: Progress 20% - Parsing TSV file...");
+            logger.debug("Progress 20% - Parsing TSV file...");
 
             ArrayList<HashMap<String, String>> tsvData = fileProcessingService.processTsv(fileContent, fileName, headers);
 
             task.updateProgress(40.0, "IN_PROGRESS", "TSV parsed, processing " + tsvData.size() + " rows...");
             taskDao.update(task);
-            System.out.println("📊 SYSTEM.OUT: Progress 40% - Parsed " + tsvData.size() + " records");
+            logger.debug("Progress 40% - Parsed {} records", tsvData.size());
 
             // Check for cancellation
             if (checkCancellation(task)) {
@@ -179,18 +179,18 @@ public class AsyncUploadService {
             // Phase 3: Data Processing (50% → 90%)
             task.updateProgress(50.0, "PROCESSING", "Processing and validating data...");
             taskDao.update(task);
-            System.out.println("⚙️ SYSTEM.OUT: Progress 50% - Processing and validating data...");
+            logger.debug("Progress 50% - Processing and validating data...");
 
             UploadResponse result = processor.apply(tsvData);
 
             task.updateProgress(80.0, "PROCESSING", "Saving data to database...");
             taskDao.update(task);
-            System.out.println("💾 SYSTEM.OUT: Progress 80% - Saving data to database...");
+            logger.debug("Progress 80% - Saving data to database...");
 
             // Phase 4: Completion (90% → 100%)
             if (result.isSuccess()) {
                 completeTask(task, result, fileType);
-                System.out.println("✅ SYSTEM.OUT: Progress 100% - " + fileType + " upload completed successfully");
+                logger.debug("Progress 100% - {} upload completed successfully", fileType);
             } else {
                 failTask(task, "Upload failed: " + result.getMessage() + 
                               (result.getErrors() != null ? ". Errors: " + String.join(", ", result.getErrors()) : ""));
@@ -201,6 +201,8 @@ public class AsyncUploadService {
         } catch (Exception e) {
             logger.error("❌ {} upload failed for task {}: {}", fileType, taskId, e.getMessage(), e);
             failTask(task, fileType + " upload failed: " + e.getMessage());
+        } finally {
+            MDC.remove("taskId");
         }
     }
 

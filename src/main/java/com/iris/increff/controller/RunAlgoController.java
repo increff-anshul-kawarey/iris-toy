@@ -44,8 +44,7 @@ public class RunAlgoController {
     @RequestMapping(path = "/api/run/noos/async", method = RequestMethod.POST)
     @Transactional
     public ResponseEntity<Task> runNoosAlgorithmAsync(@RequestBody AlgoParametersData parameters) {
-        System.out.println("🚀 SYSTEM.OUT: Async NOOS Algorithm execution requested with parameters: " + parameters);
-        logger.info("🚀 Async NOOS Algorithm execution requested with parameters: {}", parameters);
+        logger.info("Async NOOS Algorithm execution requested with parameters: {}", parameters);
         
         try {
             // Create task immediately
@@ -96,8 +95,8 @@ public class RunAlgoController {
     @RequestMapping(path = "/api/run/noos", method = RequestMethod.POST)
     @Transactional
     public ResponseEntity<Task> runNoosAlgorithm(@RequestBody AlgoParametersData parameters) {
-        logger.info("🚀 Sync NOOS Algorithm execution requested with parameters: {}", parameters);
-        logger.warn("⚠️ Using legacy sync endpoint. Consider using /api/run/noos/async for better performance.");
+        logger.info("Sync NOOS Algorithm execution requested with parameters: {}", parameters);
+        logger.warn("Using legacy sync endpoint. Consider using /api/run/noos/async for better performance.");
         
         try {
             Task result = noosAlgorithmService.runNoosAlgorithm(parameters);
@@ -111,7 +110,7 @@ public class RunAlgoController {
     @ApiOperation(value = "Get NOOS Results")
     @RequestMapping(path = "/api/results/noos", method = RequestMethod.GET)
     public ResponseEntity<List<NoosResult>> getNoosResults() {
-        logger.info("📊 Fetching NOOS results");
+        logger.info("Fetching NOOS results");
         
         try {
             List<NoosResult> results = noosAlgorithmService.getLatestResults();
@@ -123,13 +122,13 @@ public class RunAlgoController {
         }
     }
 
-    @ApiOperation(value = "Get NOOS Results by Type")
+    @ApiOperation(value = "Get NOOS Results by Type (latest run)")
     @RequestMapping(path = "/api/results/noos/{type}", method = RequestMethod.GET)
     public ResponseEntity<List<NoosResult>> getNoosResultsByType(@PathVariable String type) {
-        logger.info("📊 Fetching NOOS results for type: {}", type);
+        logger.info("Fetching NOOS results for type: {}", type);
         
         try {
-            List<NoosResult> results = noosAlgorithmService.getResultsByType(type);
+            List<NoosResult> results = noosAlgorithmService.getResultsByTypeForLatestRun(type);
             logger.info("✅ Retrieved {} {} results", results.size(), type);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
@@ -138,13 +137,13 @@ public class RunAlgoController {
         }
     }
 
-    @ApiOperation(value = "Get NOOS Results Summary")
+    @ApiOperation(value = "Get NOOS Results Summary (latest run)")
     @RequestMapping(path = "/api/results/noos/summary", method = RequestMethod.GET)
     public ResponseEntity<Map<String, Long>> getNoosResultsSummary() {
-        logger.info("📊 Fetching NOOS results summary");
+        logger.info("Fetching NOOS results summary");
         
         try {
-            Map<String, Long> summary = noosAlgorithmService.getResultsCountByType();
+            Map<String, Long> summary = noosAlgorithmService.getResultsCountByTypeForLatestRun();
             logger.info("✅ Retrieved NOOS summary: {}", summary);
             return ResponseEntity.ok(summary);
         } catch (Exception e) {
@@ -156,7 +155,7 @@ public class RunAlgoController {
     @ApiOperation(value = "Download NOOS Results as TSV")
     @RequestMapping(path = "/api/results/noos/download", method = RequestMethod.GET)
     public void downloadNoosResults(HttpServletResponse response) throws IOException {
-        logger.info("📥 NOOS results download requested");
+        logger.info("NOOS results download requested");
         
         try {
             List<NoosResult> results = noosAlgorithmService.getLatestResults();
@@ -171,16 +170,16 @@ public class RunAlgoController {
     @ApiOperation(value = "Get NOOS Dashboard Data")
     @RequestMapping(path = "/api/results/noos/dashboard", method = RequestMethod.GET)
     public ResponseEntity<Map<String, Object>> getNoosDashboardData() {
-        logger.info("📊 Fetching NOOS dashboard data");
+        logger.info("Fetching NOOS dashboard data");
         
         try {
             Map<String, Object> dashboardData = new HashMap<>();
             
-            // Get results summary
-            Map<String, Long> summary = noosAlgorithmService.getResultsCountByType();
+            // Get results summary (latest run only)
+            Map<String, Long> summary = noosAlgorithmService.getResultsCountByTypeForLatestRun();
             dashboardData.put("summary", summary);
             
-            // Get total count
+            // Get total count from latest run only
             long totalResults = summary.values().stream().mapToLong(Long::longValue).sum();
             dashboardData.put("totalResults", totalResults);
             
@@ -217,21 +216,20 @@ public class RunAlgoController {
     @ApiOperation(value = "Run Algo (Legacy)")
     @RequestMapping(path = "/api/run/{algoName}", method = RequestMethod.GET)
     public void updateSales(@PathVariable String algoName) throws ApiException {
-        logger.info("🔄 Legacy algorithm endpoint called: {}", algoName);
+        logger.info("Legacy algorithm endpoint called: {}", algoName);
         
         if ("noos".equalsIgnoreCase(algoName)) {
             logger.info("🔄 Redirecting to new NOOS endpoint");
             // Could redirect to new NOOS endpoint or show deprecation message
         }
         
-        System.out.println("Algorithm - " + algoName + " is running");
+        logger.info("Algorithm - {} is running", algoName);
     }
 
     @ApiOperation(value = "Execution Updates")
     @RequestMapping(path = "/api/run/updates", method = RequestMethod.GET)
     public DashBoardData executionResults() throws ApiException {
-        logger.info("📊 Real dashboard metrics requested");
-        System.out.println("Fetching Real Dashboard Tiles Data...");
+        logger.info("Real dashboard metrics requested");
         try {
             return dashboardMetricsService.getDashboardMetrics();
         } catch (Exception e) {

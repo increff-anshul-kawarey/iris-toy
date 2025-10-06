@@ -7,6 +7,8 @@ import com.iris.increff.model.SKU;
 import com.iris.increff.model.Store;
 import com.iris.increff.exception.ApiException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,8 @@ import java.util.List;
  */
 @Service
 public class SalesService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SalesService.class);
 
     @Autowired
     private SalesDao salesDao;
@@ -102,6 +106,7 @@ public class SalesService {
             // TRUNCATE: Replace all sales data (intentional for testing/sample data scenarios)
             // Unlike master data (Styles/SKUs/Stores), sales data uses complete replacement
             // This is suitable for toy project testing where each upload is a complete test dataset
+            messages.add("Clearing existing data");
             messages.add("Clearing existing sales data (complete replacement mode)");
             
             // Get count before deletion for audit log
@@ -194,7 +199,7 @@ public class SalesService {
             // GRACEFUL HANDLING: Log warning and skip this row
             String warningMsg = "Row " + rowNumber + ": Skipping sale - SKU '" + skuCode + "' not found in master data";
             warnings.add(warningMsg);
-            System.out.println("WARNING: " + warningMsg);
+            logger.warn(warningMsg);
             return null; // Skip this row gracefully
         }
 

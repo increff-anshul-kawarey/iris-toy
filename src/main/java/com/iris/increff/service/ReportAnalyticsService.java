@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Report Analytics Service
@@ -49,45 +48,44 @@ public class ReportAnalyticsService {
         
         try {
             List<Report1Data> reportData = new ArrayList<>();
-            
-            // Get NOOS execution history from recent runs
-            List<NoosResult> recentResults = noosAlgorithmService.getLatestResults();
-            
-            if (recentResults.isEmpty()) {
-                // Generate sample data if no real executions exist
+
+            // Build analytics across recent runs (e.g., last 5)
+            List<Long> recentRunIds = noosAlgorithmService.getRecentRunIds(5);
+            if (recentRunIds == null || recentRunIds.isEmpty()) {
                 reportData.addAll(generateSampleNoosData());
-            } else {
-                // Group results by calculated date for aggregate reporting
-                Map<Date, List<NoosResult>> groupedResults = recentResults.stream()
-                    .collect(Collectors.groupingBy(NoosResult::getCalculatedDate));
-                
-                for (Map.Entry<Date, List<NoosResult>> entry : groupedResults.entrySet()) {
-                    List<NoosResult> results = entry.getValue();
-                    Date executionDate = entry.getKey();
-                    
-                    // Count classifications by type field
-                    long coreCount = results.stream().filter(r -> "core".equalsIgnoreCase(r.getType())).count();
-                    long bestsellerCount = results.stream().filter(r -> "bestseller".equalsIgnoreCase(r.getType())).count();
-                    long fashionCount = results.stream().filter(r -> "fashion".equalsIgnoreCase(r.getType())).count();
-                    
-                    String algorithmLabel = "NOOS Analysis " + executionDate.toString().substring(0, 10);
-                    
-                    Report1Data reportItem = new Report1Data(
-                        executionDate,
-                        algorithmLabel,
-                        "COMPLETED",
-                        results.size(),
-                        (int) coreCount,
-                        (int) bestsellerCount,
-                        (int) fashionCount,
-                        2.5, // Estimated execution time
-                        "Real algorithm execution"
-                    );
-                    
-                    reportData.add(reportItem);
-                }
+                logger.info("✅ Generated {} NOOS analytics report entries (sample)", reportData.size());
+                return reportData;
             }
-            
+
+            for (Long runId : recentRunIds) {
+                List<NoosResult> runResults = noosAlgorithmService.getResultsByRunId(runId);
+                if (runResults == null || runResults.isEmpty()) {
+                    continue;
+                }
+
+                Date executionDate = noosAlgorithmService.getRunDate(runId);
+
+                long coreCount = runResults.stream().filter(r -> "core".equalsIgnoreCase(r.getType())).count();
+                long bestsellerCount = runResults.stream().filter(r -> "bestseller".equalsIgnoreCase(r.getType())).count();
+                long fashionCount = runResults.stream().filter(r -> "fashion".equalsIgnoreCase(r.getType())).count();
+
+                String algorithmLabel = "NOOS Analysis " + (executionDate != null ? executionDate.toString().substring(0, 10) : ("Run " + runId));
+
+                Report1Data reportItem = new Report1Data(
+                    executionDate,
+                    algorithmLabel,
+                    "COMPLETED",
+                    runResults.size(),
+                    (int) coreCount,
+                    (int) bestsellerCount,
+                    (int) fashionCount,
+                    2.5,
+                    "Real algorithm execution"
+                );
+
+                reportData.add(reportItem);
+            }
+
             logger.info("✅ Generated {} NOOS analytics report entries", reportData.size());
             return reportData;
             

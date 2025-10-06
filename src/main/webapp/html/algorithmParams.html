@@ -28,10 +28,34 @@
         </div>
 
         <!-- Parameters Form Container -->
-        <div class="upload-cards-container">
+        <div class="upload-cards-container" style="padding-bottom: 80px;">
             <div class="container-fluid">
                 <div class="row">
-                    <div class="col-lg-8 col-md-10 col-12 mx-auto">
+                    <!-- Configurations Sidebar -->
+                    <div class="col-lg-4 col-md-5 col-12">
+                        <div class="upload-card-modern mb-4">
+                            <div class="card-header-modern status-success">
+                                <div class="status-title">
+                                    <i class="fa fa-list"></i>
+                                    Configurations
+                                </div>
+                            </div>
+                            <div class="card-body-modern" style="min-height: auto; padding: 1rem 1.5rem;">
+                                <div class="mb-3">
+                                    <input type="text" class="form-control" id="parameterSetsSearch" placeholder="Search configs by name...">
+                                </div>
+                                <div id="parameterSetsContainer">
+                                    <div class="text-center text-muted">
+                                        <i class="fa fa-spinner fa-spin"></i>
+                                        Loading parameter sets...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Parameters Editor -->
+                    <div class="col-lg-8 col-md-7 col-12">
                         <!-- Current Parameters Card -->
                         <div class="upload-card-modern mb-4">
                             <div class="card-header-modern status-pending">
@@ -49,6 +73,9 @@
                                             <i class="fa fa-calculator"></i>
                                             NOOS Classification Parameters
                                         </h6>
+                                        <div class="small text-muted">
+                                            Editing set: <span id="currentParameterSetName">Current</span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -63,7 +90,6 @@
                                             <input type="number" class="form-control" id="liquidationThreshold" 
                                                    name="liquidationThreshold" step="0.01" min="0" max="1" 
                                                    placeholder="0.25" required>
-                                            <span class="input-group-text">%</span>
                                         </div>
                                         <small class="form-text text-muted">Example: 0.25 = 25% discount threshold</small>
                                     </div>
@@ -73,6 +99,7 @@
                                         <label for="bestsellerMultiplier" class="form-label">
                                             <strong>Bestseller Multiplier</strong>
                                             <small class="text-muted d-block">Revenue multiplier for bestseller classification</small>
+                                            <small class="text-muted d-block" style="visibility: hidden;">spacer</small>
                                         </label>
                                         <div class="input-group">
                                             <input type="number" class="form-control" id="bestsellerMultiplier" 
@@ -104,13 +131,12 @@
                                     <div class="col-md-6 mb-3">
                                         <label for="consistencyThreshold" class="form-label">
                                             <strong>Consistency Threshold</strong>
-                                            <small class="text-muted d-block">% of days with sales for Core classification</small>
+                                            <small class="text-muted d-block">Fraction of days with sales for Core classification</small>
                                         </label>
                                         <div class="input-group">
                                             <input type="number" class="form-control" id="consistencyThreshold" 
                                                    name="consistencyThreshold" step="0.01" min="0" max="1" 
                                                    placeholder="0.75" required>
-                                            <span class="input-group-text">%</span>
                                         </div>
                                         <small class="form-text text-muted">Example: 0.75 = 75% of available days</small>
                                     </div>
@@ -207,36 +233,35 @@
                                         <i class="fa fa-save"></i>
                                         Save Parameters
                                     </button>
-                                    <button type="button" class="btn-primary-modern" id="runAlgorithmBtn">
-                                        <i class="fa fa-play"></i>
-                                        Run Algorithm
+                                    <button type="button" class="btn-primary-modern" id="saveNewParamsBtn">
+                                        <i class="fa fa-clone"></i>
+                                        Save as New Config
+                                    </button>
+                                    <button type="button" class="btn-secondary-modern" id="activateSetBtn">
+                                        <i class="fa fa-check-circle"></i>
+                                        Activate This Set
                                     </button>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Parameter Sets History -->
-                        <div class="upload-card-modern">
-                            <div class="card-header-modern status-success">
-                                <div class="status-title">
-                                    <i class="fa fa-history"></i>
-                                    Parameter Sets History
-                                </div>
-                            </div>
-                            <div class="card-body-modern" style="min-height: auto; padding: 2rem 1.5rem;">
-                                <div id="parameterSetsContainer">
-                                    <div class="text-center text-muted">
-                                        <i class="fa fa-spinner fa-spin"></i>
-                                        Loading parameter sets...
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Sticky footer for primary actions -->
+<div style="position: sticky; bottom: 0; z-index: 100; background: #fff; border-top: 1px solid #e5e5e5; padding: 0.75rem 1rem;">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-end">
+            <button type="button" class="btn-primary-modern" id="runAlgorithmBtn">
+                <i class="fa fa-play"></i>
+                Run Algorithm
+            </button>
+        </div>
+    </div>
+    </div>
 
 <!-- Success/Error Messages will be handled by JavaScript alerts or existing toast system -->
 

@@ -32,13 +32,11 @@ public class ReportsController {
     @ApiOperation(value = "Get NOOS Analytics Report")
     @RequestMapping(path = "/api/report/report1", method = RequestMethod.GET)
     public List<Report1Data> getReport1() {
-        logger.info("📊 NOOS Analytics Report requested");
-        System.out.println("Fetching NOOS Analytics Report...");
+        logger.info("NOOS Analytics Report requested");
         try {
             return reportAnalyticsService.generateNoosAnalyticsReport();
         } catch (Exception e) {
-            logger.error("❌ Failed to generate NOOS analytics report, using fallback: {}", e.getMessage());
-            System.out.println("❌ Analytics failed, using sample data");
+            logger.error("Failed to generate NOOS analytics report, using fallback: {}", e.getMessage());
             return null;
         }
     }
@@ -46,13 +44,11 @@ public class ReportsController {
     @ApiOperation(value = "Get System Health Report")
     @RequestMapping(path = "/api/report/report2", method = RequestMethod.GET)
     public List<Report2Data> getReport2() {
-        logger.info("🏥 System Health Report requested");
-        System.out.println("Fetching System Health Report...");
+        logger.info("System Health Report requested");
         try {
             return reportAnalyticsService.generateSystemHealthReport();
         } catch (Exception e) {
-            logger.error("❌ Failed to generate system health report, using fallback: {}", e.getMessage());
-            System.out.println("❌ Health report failed, using sample data");
+            logger.error("Failed to generate system health report, using fallback: {}", e.getMessage());
             return null;
         }
     }
@@ -61,6 +57,6 @@ public class ReportsController {
     @RequestMapping(path = "/api/report/download/{reportName}", method = RequestMethod.GET)
     public void getDownloadReport2(@PathVariable String reportName, HttpServletResponse response) throws IOException {
         ProcessTsv.createFileResponse(new File("src/main/resources/Files/fileInput.tsv"), response);
-        System.out.println("Download Report is Successful :-" + reportName);
+        logger.info("Report download successful: {}", reportName);
     }
 }

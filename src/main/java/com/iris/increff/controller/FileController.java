@@ -13,6 +13,8 @@ import com.iris.increff.config.TsvProperties;
 import com.iris.increff.util.ProcessTsv;
 import com.iris.increff.exception.ApiException;
 import io.swagger.annotations.Api;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +33,8 @@ import java.util.List;
 @Api
 @RestController
 public class FileController {
+
+    private static final Logger logger = LoggerFactory.getLogger(FileController.class);
 
     @Autowired
     private StyleService styleService;
@@ -219,14 +223,14 @@ public class FileController {
     @RequestMapping(path = "/api/file/input/{fileName}", method = RequestMethod.GET)
     public void exportInputTSV(@PathVariable String fileName, HttpServletResponse response) throws IOException, InterruptedException {
         ProcessTsv.createFileResponse(new File("src/main/resources/Files/fileInput.tsv"), response);
-        System.out.println("Export Input File Download is Successful :- " + fileName);
+        logger.info("Input file template downloaded successfully: {}", fileName);
     }
 
     @ApiOperation(value = "Download template for File")
     @RequestMapping(path = "/api/file/template/{fileName}", method = RequestMethod.GET)
     public void exportTemplateTSV(@PathVariable String fileName, HttpServletResponse response) throws IOException {
         ProcessTsv.createFileResponse(new File("src/main/resources/Files/fileTemplate.tsv"), response);
-        System.out.println("Download Input Template File is Successful :- " + fileName);
+        logger.info("Input template downloaded successfully: {}", fileName);
 
     }
 
@@ -234,7 +238,7 @@ public class FileController {
     @RequestMapping(path = "/api/file/errors/{fileName}", method = RequestMethod.GET)
     public void exportErrorTSV(@PathVariable String fileName, HttpServletResponse response) throws IOException {
         ProcessTsv.createFileResponse(new File("src/main/resources/Files/fileError.tsv"), response);
-        System.out.println("Download Validation Error for File is Successful :- " + fileName);
+        logger.info("Validation errors file downloaded successfully: {}", fileName);
 
     }
 
@@ -350,7 +354,7 @@ public class FileController {
     @RequestMapping(value = "/api/file/upload/styles/async", method = RequestMethod.POST)
     @Transactional
     public ResponseEntity<Task> uploadStylesTsvAsync(@RequestPart("file") MultipartFile file) {
-        System.out.println("📁 SYSTEM.OUT: Async Styles upload requested: " + file.getOriginalFilename());
+        logger.info("Async Styles upload requested: {}", file.getOriginalFilename());
         return processAsyncUpload(file, "STYLES_UPLOAD", 
                                 (taskId, fileContent, fileName) -> asyncUploadService.uploadStylesAsync(taskId, fileContent, fileName));
     }
@@ -359,7 +363,7 @@ public class FileController {
     @RequestMapping(value = "/api/file/upload/stores/async", method = RequestMethod.POST)
     @Transactional
     public ResponseEntity<Task> uploadStoresTsvAsync(@RequestPart("file") MultipartFile file) {
-        System.out.println("📁 SYSTEM.OUT: Async Stores upload requested: " + file.getOriginalFilename());
+        logger.info("Async Stores upload requested: {}", file.getOriginalFilename());
         return processAsyncUpload(file, "STORES_UPLOAD",
                                 (taskId, fileContent, fileName) -> asyncUploadService.uploadStoresAsync(taskId, fileContent, fileName));
     }
@@ -368,7 +372,7 @@ public class FileController {
     @RequestMapping(value = "/api/file/upload/skus/async", method = RequestMethod.POST)
     @Transactional
     public ResponseEntity<Task> uploadSkusTsvAsync(@RequestPart("file") MultipartFile file) {
-        System.out.println("📁 SYSTEM.OUT: Async SKUs upload requested: " + file.getOriginalFilename());
+        logger.info("Async SKUs upload requested: {}", file.getOriginalFilename());
         return processAsyncUpload(file, "SKUS_UPLOAD",
                                 (taskId, fileContent, fileName) -> asyncUploadService.uploadSkusAsync(taskId, fileContent, fileName));
     }
@@ -377,7 +381,7 @@ public class FileController {
     @RequestMapping(value = "/api/file/upload/sales/async", method = RequestMethod.POST)
     @Transactional
     public ResponseEntity<Task> uploadSalesTsvAsync(@RequestPart("file") MultipartFile file) {
-        System.out.println("📁 SYSTEM.OUT: Async Sales upload requested: " + file.getOriginalFilename());
+        logger.info("Async Sales upload requested: {}", file.getOriginalFilename());
         return processAsyncUpload(file, "SALES_UPLOAD",
                                 (taskId, fileContent, fileName) -> asyncUploadService.uploadSalesAsync(taskId, fileContent, fileName));
     }
@@ -412,7 +416,7 @@ public class FileController {
             // Start async processing with pre-read content
             try {
                 processor.process(task.getId(), fileContent, fileName);
-                System.out.println("✅ SYSTEM.OUT: Async upload started with task ID: " + task.getId());
+                logger.info("Async upload started with task ID: {}", task.getId());
                 return ResponseEntity.accepted().body(task); // HTTP 202 Accepted
             } catch (RuntimeException e) {
                 // Handle thread pool rejection
@@ -426,7 +430,7 @@ public class FileController {
             }
             
         } catch (Exception e) {
-            System.out.println("❌ SYSTEM.OUT: Failed to start async upload: " + e.getMessage());
+            logger.error("Failed to start async upload: {}", e.getMessage(), e);
             
             // Create error response with details
             Task errorTask = new Task();
@@ -447,16 +451,16 @@ public class FileController {
     @ApiOperation(value = "Download Styles TSV (Async)")
     @RequestMapping(value = "/api/file/download/styles/async", method = RequestMethod.POST)
     public ResponseEntity<Task> downloadStylesAsync() {
-        System.out.println("📥 CONTROLLER: Creating download task for Styles");
+        logger.info("Creating download task for Styles");
         Task task = createDownloadTask("STYLES_DOWNLOAD");
         
         // Persist task in a NEW transaction that commits immediately
         task = taskService.createTaskInNewTransaction(task);
-        System.out.println("📥 CONTROLLER: Task created and committed with ID: " + task.getId());
+        logger.info("Task created and committed with ID: {}", task.getId());
         
         // Now call async service - task is already visible in database
         asyncDownloadService.downloadStylesAsync(task.getId());
-        System.out.println("📥 CONTROLLER: Async service called, returning task");
+        logger.info("Async service called, returning task");
         
         return ResponseEntity.accepted().body(task);
     }

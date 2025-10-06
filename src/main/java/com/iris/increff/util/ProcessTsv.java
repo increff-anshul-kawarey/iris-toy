@@ -12,11 +12,15 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import javax.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.List;
 
 public class ProcessTsv {
+
+    private static final Logger logger = LoggerFactory.getLogger(ProcessTsv.class);
 
     public static ResponseEntity<byte[]> generateDataForTemplate(String[] headers, String filename) {
         StringBuilder head = new StringBuilder();
@@ -83,7 +87,7 @@ public class ProcessTsv {
         try {
             c.close();
         } catch (IOException e) {
-            // DO NOTHING
+            logger.debug("Ignoring IOException on close: {}", e.getMessage());
         } finally {
             // DO NOTHING
         }

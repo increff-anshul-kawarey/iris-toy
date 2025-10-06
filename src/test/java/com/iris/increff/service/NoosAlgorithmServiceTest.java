@@ -508,9 +508,9 @@ public class NoosAlgorithmServiceTest extends AbstractUnitTest {
         noosAlgorithmService.runNoosAlgorithm(testParameters);
         
         // When: Get results by type
-        List<NoosResult> coreResults = noosAlgorithmService.getResultsByType("core");
-        List<NoosResult> bestsellerResults = noosAlgorithmService.getResultsByType("bestseller");
-        List<NoosResult> fashionResults = noosAlgorithmService.getResultsByType("fashion");
+        List<NoosResult> coreResults = noosAlgorithmService.getResultsByTypeForLatestRun("core");
+        List<NoosResult> bestsellerResults = noosAlgorithmService.getResultsByTypeForLatestRun("bestseller");
+        List<NoosResult> fashionResults = noosAlgorithmService.getResultsByTypeForLatestRun("fashion");
 
         // Then: Should return filtered results
         assertNotNull("Core results should not be null", coreResults);
@@ -541,7 +541,7 @@ public class NoosAlgorithmServiceTest extends AbstractUnitTest {
         noosAlgorithmService.runNoosAlgorithm(testParameters);
         
         // When: Get counts by type
-        Map<String, Long> counts = noosAlgorithmService.getResultsCountByType();
+        Map<String, Long> counts = noosAlgorithmService.getResultsCountByTypeForLatestRun();
 
         // Then: Should return correct counts
         assertNotNull("Counts should not be null", counts);

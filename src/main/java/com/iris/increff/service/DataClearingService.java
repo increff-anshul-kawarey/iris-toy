@@ -5,6 +5,8 @@ import com.iris.increff.dao.SkuDao;
 import com.iris.increff.dao.StyleDao;
 import com.iris.increff.dao.StoreDao;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class DataClearingService {
+
+    private static final Logger logger = LoggerFactory.getLogger(DataClearingService.class);
 
     @Autowired
     private SalesDao salesDao;
@@ -52,7 +56,7 @@ public class DataClearingService {
      */
     @Transactional
     public void clearDataForStyleUpload() {
-        System.out.println("Clearing data for Style upload - handling dependencies...");
+        logger.info("Clearing data for Style upload - handling dependencies...");
         salesDao.deleteAll();  // Clear sales first (depends on SKUs + Stores)
         skuDao.deleteAll();    // Clear SKUs second (depends on Styles)  
         styleDao.deleteAll();  // Now safe to clear Styles
@@ -67,7 +71,7 @@ public class DataClearingService {
      */
     @Transactional
     public void clearDataForStoreUpload() {
-        System.out.println("Clearing data for Store upload - handling dependencies...");
+        logger.info("Clearing data for Store upload - handling dependencies...");
         salesDao.deleteAll();  // Clear sales first (depends on Stores)
         storeDao.deleteAll();  // Now safe to clear Stores
     }
@@ -81,7 +85,7 @@ public class DataClearingService {
      */
     @Transactional
     public void clearDataForSkuUpload() {
-        System.out.println("Clearing data for SKU upload - handling dependencies...");
+        logger.info("Clearing data for SKU upload - handling dependencies...");
         salesDao.deleteAll();  // Clear sales first (depends on SKUs)
         skuDao.deleteAll();    // Now safe to clear SKUs
     }
@@ -94,7 +98,7 @@ public class DataClearingService {
      */
     @Transactional
     public void clearDataForSalesUpload() {
-        System.out.println("Clearing data for Sales upload...");
+        logger.info("Clearing data for Sales upload...");
         salesDao.deleteAll();  // Sales has no children, safe to clear directly
     }
 
@@ -108,7 +112,7 @@ public class DataClearingService {
      */
     @Transactional
     public void clearAllData() {
-        System.out.println("Clearing all data - handling all dependencies...");
+        logger.warn("Clearing all data - handling all dependencies...");
         
         // Get counts before deletion for audit log
         Long salesCount = salesDao.getTotalSalesCount();

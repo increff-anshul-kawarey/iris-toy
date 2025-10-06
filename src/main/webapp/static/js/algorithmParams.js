@@ -10,7 +10,10 @@ const RUN_ALGORITHM_API = `${API_BASE}/run/noos/async`;
 
 // DOM elements
 let form, saveBtn, loadDefaultsBtn, loadCurrentBtn, runAlgorithmBtn;
+let activateSetBtn;
+let currentEditingSetName = null; // Tracks which set is loaded for editing
 let parameterSetsContainer;
+let parameterSetsSearch; // new: search input
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -26,10 +29,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeElements() {
     form = document.getElementById('algorithmParamsForm');
     saveBtn = document.getElementById('saveParamsBtn');
+    saveNewBtn = document.getElementById('saveNewParamsBtn');
     loadDefaultsBtn = document.getElementById('loadDefaultsBtn');
     loadCurrentBtn = document.getElementById('loadCurrentBtn');
     runAlgorithmBtn = document.getElementById('runAlgorithmBtn');
+    activateSetBtn = document.getElementById('activateSetBtn');
     parameterSetsContainer = document.getElementById('parameterSetsContainer');
+    parameterSetsSearch = document.getElementById('parameterSetsSearch');
 }
 
 /**
@@ -40,9 +46,19 @@ function attachEventListeners() {
     loadDefaultsBtn.addEventListener('click', loadDefaultParameters);
     loadCurrentBtn.addEventListener('click', loadCurrentParameters);
     runAlgorithmBtn.addEventListener('click', runAlgorithmWithCurrentParams);
+    saveNewBtn.addEventListener('click', saveAsNewConfig);
+    activateSetBtn.addEventListener('click', activateCurrentEditingSet);
     
     // Form validation
     form.addEventListener('input', validateForm);
+
+    // Search filter
+    if (parameterSetsSearch) {
+        parameterSetsSearch.addEventListener('input', () => {
+            // Re-render from cached list when we add caching; for now, reload
+            loadParameterSets();
+        });
+    }
 }
 
 /**
@@ -59,6 +75,7 @@ async function loadCurrentParameters() {
         
         const params = await response.json();
         populateForm(params);
+        setCurrentEditingSet(null);
         showSuccess('Current parameters loaded successfully');
         
     } catch (error) {
@@ -83,6 +100,7 @@ async function loadDefaultParameters() {
         
         const params = await response.json();
         populateForm(params);
+        setCurrentEditingSet('default');
         showSuccess('Default parameters loaded successfully');
         
     } catch (error) {
@@ -106,8 +124,12 @@ async function saveParameters() {
         showLoading(saveBtn);
         
         const formData = getFormData();
-        const response = await fetch(`${ALGO_PARAMS_API}/update`, {
-            method: 'POST',
+        const url = currentEditingSetName
+            ? `${ALGO_PARAMS_API}/set/${encodeURIComponent(currentEditingSetName)}`
+            : `${ALGO_PARAMS_API}/update`;
+        const method = currentEditingSetName ? 'PUT' : 'POST';
+        const response = await fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -128,6 +150,47 @@ async function saveParameters() {
         showError('Failed to save parameters: ' + error.message);
     } finally {
         hideLoading(saveBtn);
+    }
+}
+
+/**
+ * Save form parameters as a NEW parameter set (uses algorithmLabel as name by default)
+ */
+async function saveAsNewConfig() {
+    if (!validateForm()) {
+        showError('Please fix validation errors before saving');
+        return;
+    }
+
+    try {
+        showLoading(saveNewBtn);
+
+        const formData = getFormData();
+        let proposedName = (formData.algorithmLabel || '').trim();
+        // Allow user to override name
+        const inputName = prompt('Enter a name for this NOOS config', proposedName || 'noos_config');
+        const finalName = (inputName || proposedName || ('run_' + Date.now())).trim();
+
+        const url = `${ALGO_PARAMS_API}/create?name=${encodeURIComponent(finalName)}`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        showSuccess(`Saved new config "${result.parameterSetName || finalName}" and activated it`);
+        loadParameterSets();
+    } catch (error) {
+        console.error('Error saving as new config:', error);
+        showError('Failed to save new config: ' + error.message);
+    } finally {
+        hideLoading(saveNewBtn);
     }
 }
 
@@ -178,12 +241,22 @@ async function runAlgorithmWithCurrentParams() {
  */
 async function loadParameterSets() {
     try {
-        const response = await fetch(`${ALGO_PARAMS_API}/sets`);
+        // Prefer recent sets (active+inactive) for history view
+        const response = await fetch(`${ALGO_PARAMS_API}/sets/recent?limit=10`);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        const parameterSets = await response.json();
+        let parameterSets = await response.json();
+        // Apply simple client-side filter by name/label
+        const q = (parameterSetsSearch && parameterSetsSearch.value || '').toLowerCase();
+        if (q) {
+            parameterSets = parameterSets.filter(p => {
+                const name = (p.parameterSetName || '').toLowerCase();
+                const label = (p.algorithmLabel || '').toLowerCase();
+                return name.includes(q) || label.includes(q);
+            });
+        }
         displayParameterSets(parameterSets);
         
     } catch (error) {
@@ -250,7 +323,7 @@ function displayParameterSets(parameterSets) {
                 </div>
                 <div class="col-md-3">
                     <div class="parameter-set-actions">
-                        <button class="btn-secondary-modern btn-sm" onclick="loadParameterSet('${paramSet.parameterSetName || paramSet.algorithmLabel}')">
+                        <button class="btn-secondary-modern btn-sm" onclick="loadParameterSet('${(paramSet.parameterSetName || paramSet.algorithmLabel || '').replace(/'/g, "\\'")}')">
                             <i class="fa fa-download"></i> Load
                         </button>
                     </div>
@@ -267,13 +340,14 @@ function displayParameterSets(parameterSets) {
  */
 async function loadParameterSet(parameterSetName) {
     try {
-        const response = await fetch(`${ALGO_PARAMS_API}/set/${parameterSetName}`);
+        const response = await fetch(`${ALGO_PARAMS_API}/set/${encodeURIComponent(parameterSetName)}`);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const params = await response.json();
         populateForm(params);
+        setCurrentEditingSet(parameterSetName);
         showSuccess(`Parameter set "${parameterSetName}" loaded successfully`);
         
     } catch (error) {
@@ -302,6 +376,47 @@ function populateForm(params) {
     
     document.getElementById('coreDurationMonths').value = params.coreDurationMonths || '';
     document.getElementById('bestsellerDurationDays').value = params.bestsellerDurationDays || '';
+}
+
+/**
+ * Update UI to reflect which set is being edited
+ */
+function setCurrentEditingSet(parameterSetName) {
+    currentEditingSetName = parameterSetName; // null means current active set
+    const labelEl = document.getElementById('currentParameterSetName');
+    if (labelEl) {
+        labelEl.textContent = parameterSetName === null ? 'Current' : parameterSetName;
+    }
+}
+
+/**
+ * Activate the currently editing named set
+ */
+async function activateCurrentEditingSet() {
+    if (!currentEditingSetName) {
+        showError('Load a specific set to activate it.');
+        return;
+    }
+    try {
+        showLoading(activateSetBtn);
+        const response = await fetch(`${ALGO_PARAMS_API}/set/${encodeURIComponent(currentEditingSetName)}/activate`, {
+            method: 'POST'
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        const result = await response.json();
+        showSuccess(`Activated parameter set "${result.parameterSetName || currentEditingSetName}"`);
+        setCurrentEditingSet(null);
+        loadCurrentParameters();
+        loadParameterSets();
+    } catch (error) {
+        console.error('Error activating set:', error);
+        showError('Failed to activate set: ' + error.message);
+    } finally {
+        hideLoading(activateSetBtn);
+    }
 }
 
 /**

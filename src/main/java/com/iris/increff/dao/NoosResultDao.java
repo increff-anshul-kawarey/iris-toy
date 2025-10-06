@@ -41,17 +41,22 @@ public class NoosResultDao {
         entityManager.clear();
     }
 
-    // Get the most recent NOOS results (last run only)
+    // Get results ordered by latest calculated date (DESC)
     public List<NoosResult> getLatestResults() {
-        // Find the max calculatedDate (latest run timestamp)
-        Date maxDate = entityManager.createQuery(
-                "SELECT MAX(n.calculatedDate) FROM NoosResult n", Date.class)
-                .getSingleResult();
-        if (maxDate == null) return java.util.Collections.emptyList();
-        String hql = "FROM NoosResult WHERE calculatedDate = :dt ORDER BY styleRevContribution DESC";
+        String hql = "FROM NoosResult n ORDER BY n.calculatedDate DESC";
         TypedQuery<NoosResult> query = entityManager.createQuery(hql, NoosResult.class);
-        query.setParameter("dt", maxDate);
         return query.getResultList();
+    }
+
+    /**
+     * Get the latest algorithm run identifier present in NOOS results.
+     *
+     * @return latest non-null algorithmRunId or null if no results exist
+     */
+    public Long getLatestRunId() {
+        TypedQuery<Long> query = entityManager.createQuery(
+                "SELECT MAX(n.algorithmRunId) FROM NoosResult n", Long.class);
+        return query.getSingleResult();
     }
 
     // Get results by specific algorithm run ID
@@ -62,14 +67,34 @@ public class NoosResultDao {
         return query.getResultList();
     }
 
-    // Get distinct recent run timestamps
-    public List<Date> getRecentRunDates(int limit) {
-        TypedQuery<Date> query = entityManager.createQuery(
-            "SELECT DISTINCT n.calculatedDate FROM NoosResult n ORDER BY n.calculatedDate DESC",
-            Date.class
+    /**
+     * Get distinct recent run identifiers ordered descending by run id.
+     *
+     * @param limit maximum number of run identifiers to return
+     * @return list of recent algorithmRunId values
+     */
+    public List<Long> getRecentRunIds(int limit) {
+        TypedQuery<Long> query = entityManager.createQuery(
+                "SELECT DISTINCT n.algorithmRunId FROM NoosResult n ORDER BY n.algorithmRunId DESC",
+                Long.class
         );
         query.setMaxResults(limit);
         return query.getResultList();
+    }
+
+    /**
+     * Get the latest calculated date within a given run (for display).
+     *
+     * @param runId algorithmRunId value
+     * @return latest calculatedDate within the run, or null if none
+     */
+    public Date getRunDate(Long runId) {
+        TypedQuery<Date> query = entityManager.createQuery(
+                "SELECT MAX(n.calculatedDate) FROM NoosResult n WHERE n.algorithmRunId = :runId",
+                Date.class
+        );
+        query.setParameter("runId", runId);
+        return query.getSingleResult();
     }
 
     // Get results by category
@@ -88,6 +113,21 @@ public class NoosResultDao {
         return query.getResultList();
     }
 
+    /**
+     * Get results by type for a specific algorithm run.
+     *
+     * @param type result classification type (core, bestseller, fashion)
+     * @param runId algorithmRunId to filter by
+     * @return ordered results for the type within the run
+     */
+    public List<NoosResult> getResultsByTypeAndRunId(String type, Long runId) {
+        String hql = "FROM NoosResult WHERE type = :type AND algorithmRunId = :runId ORDER BY styleRevContribution DESC";
+        TypedQuery<NoosResult> query = entityManager.createQuery(hql, NoosResult.class);
+        query.setParameter("type", type);
+        query.setParameter("runId", runId);
+        return query.getResultList();
+    }
+
     // Delete all NOOS results
     public void deleteAll() {
         entityManager.createQuery("DELETE FROM NoosResult").executeUpdate();
@@ -99,11 +139,26 @@ public class NoosResultDao {
         return entityManager.createQuery(hql, Long.class).getSingleResult();
     }
 
-    // Get count by type for dashboard display
+    // Get count by type for dashboard display (all runs)
     public long getCountByType(String type) {
         String hql = "SELECT COUNT(*) FROM NoosResult WHERE type = :type";
         TypedQuery<Long> query = entityManager.createQuery(hql, Long.class);
         query.setParameter("type", type);
+        return query.getSingleResult();
+    }
+
+    /**
+     * Get result count by type limited to a specific algorithm run.
+     *
+     * @param type result classification type (core, bestseller, fashion)
+     * @param runId algorithmRunId to filter by
+     * @return count of results of the given type within the run
+     */
+    public long getCountByTypeForRun(String type, Long runId) {
+        String hql = "SELECT COUNT(*) FROM NoosResult WHERE type = :type AND algorithmRunId = :runId";
+        TypedQuery<Long> query = entityManager.createQuery(hql, Long.class);
+        query.setParameter("type", type);
+        query.setParameter("runId", runId);
         return query.getSingleResult();
     }
 

@@ -7,6 +7,7 @@ import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 import org.springframework.web.servlet.config.annotation.DefaultServletHandlerConfigurer;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 import org.thymeleaf.spring4.SpringTemplateEngine;
 import org.thymeleaf.spring4.templateresolver.SpringResourceTemplateResolver;
@@ -56,6 +57,11 @@ public class ControllerConfig extends WebMvcConfigurerAdapter {
 		configurer.enable();
 	}
 
+	@Override
+	public void addInterceptors(InterceptorRegistry registry) {
+		registry.addInterceptor(new RequestIdInterceptor());
+	}
+
 	@Bean
 	public SpringTemplateEngine templateEngine() {
 		SpringTemplateEngine engine = new SpringTemplateEngine();
@@ -86,9 +92,4 @@ public class ControllerConfig extends WebMvcConfigurerAdapter {
 		multipartResolver.setMaxUploadSize(10500000);
 		return multipartResolver;
 	}
-
-//	@Bean
-//	public StandardServletMultipartResolver multipartResolver() {
-//		return new StandardServletMultipartResolver();
-//	}
 }

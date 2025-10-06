@@ -2,6 +2,8 @@ package com.iris.increff.dao;
 
 import com.iris.increff.model.AlgorithmParameters;
 import org.springframework.stereotype.Repository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityManager;
@@ -20,6 +22,8 @@ import java.util.List;
  */
 @Repository
 public class AlgorithmParametersDao {
+
+    private static final Logger logger = LoggerFactory.getLogger(AlgorithmParametersDao.class);
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -52,6 +56,24 @@ public class AlgorithmParametersDao {
     }
 
     /**
+     * Find by parameter set name, including inactive parameter sets.
+     *
+     * Used for loading historical configurations by explicit name from the UI.
+     *
+     * @param parameterSet unique name of the parameter set
+     * @return matching {@link AlgorithmParameters} or null if not found
+     */
+    public AlgorithmParameters findByParameterSetAny(String parameterSet) {
+        TypedQuery<AlgorithmParameters> query = entityManager.createQuery(
+            "SELECT a FROM AlgorithmParameters a WHERE a.parameterSet = :parameterSet",
+            AlgorithmParameters.class
+        );
+        query.setParameter("parameterSet", parameterSet);
+        List<AlgorithmParameters> results = query.getResultList();
+        return results.isEmpty() ? null : results.get(0);
+    }
+
+    /**
      * Get all active parameter sets
      */
     public List<AlgorithmParameters> findAllActive() {
@@ -71,6 +93,17 @@ public class AlgorithmParametersDao {
             AlgorithmParameters.class
         );
         query.setMaxResults(limit);
+        return query.getResultList();
+    }
+
+    /**
+     * Get all parameter sets (active and inactive)
+     */
+    public List<AlgorithmParameters> findAll() {
+        TypedQuery<AlgorithmParameters> query = entityManager.createQuery(
+            "SELECT a FROM AlgorithmParameters a ORDER BY a.lastUpdatedDate DESC",
+            AlgorithmParameters.class
+        );
         return query.getResultList();
     }
 
@@ -110,13 +143,12 @@ public class AlgorithmParametersDao {
                 entityManager.persist(defaultParams);
                 entityManager.flush();
                 
-                System.out.println("✅ Created default algorithm parameters in database");
+                logger.info("Created default algorithm parameters in database");
             }
 
             return defaultParams;
         } catch (Exception e) {
-            System.err.println("❌ Error in getDefaultParameters: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error in getDefaultParameters: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to get default parameters", e);
         }
     }
