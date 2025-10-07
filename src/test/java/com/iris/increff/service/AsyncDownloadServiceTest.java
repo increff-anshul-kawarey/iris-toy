@@ -5,9 +5,8 @@ import com.iris.increff.dao.TaskDao;
 import com.iris.increff.model.Task;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.annotation.Rollback;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.util.concurrent.CompletableFuture;
@@ -33,14 +32,12 @@ public class AsyncDownloadServiceTest extends AbstractUnitTest {
         task.setStatus("PENDING");
         task.setStartTime(new java.util.Date());
         task.setUserId("system");
-        task.updateProgress(0.0, "PENDING", "Created");
+        task.updateProgress(0.0, "PENDING: Created");
         taskDao.insert(task);
         return task;
     }
 
     @Test
-    @Transactional
-    @Rollback
     public void testDownloadStylesAsync_Success() throws Exception {
         Task t = createTask("STYLES_DOWNLOAD");
         System.setProperty("iris.test.async.delay.ms", "1500");
@@ -53,8 +50,6 @@ public class AsyncDownloadServiceTest extends AbstractUnitTest {
     }
 
     @Test
-    @Transactional
-    @Rollback
     public void testDownloadConcurrent_StylesAndStores() throws Exception {
         Task t1 = createTask("STYLES_DOWNLOAD");
         Task t2 = createTask("STORES_DOWNLOAD");

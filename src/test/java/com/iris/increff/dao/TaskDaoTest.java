@@ -65,10 +65,8 @@ public class TaskDaoTest extends AbstractUnitTest {
         testTask1.setErrorCount(0);
         testTask1.setStartTime(testStartTime);
         testTask1.setUserId("user123");
-        testTask1.setProgressPercentage(0.0);
-        testTask1.setCurrentPhase("INITIALIZATION");
-        testTask1.setCurrentStep(1);
-        testTask1.setTotalSteps(5);
+        // currentPhase removed - phase info now in progressMessage
+        // Removed currentStep and totalSteps fields
         testTask1.setCancellationRequested(false);
 
         // Create test task 2 - ALGORITHM_RUN task
@@ -82,10 +80,9 @@ public class TaskDaoTest extends AbstractUnitTest {
         testTask2.setStartTime(testStartTime);
         testTask2.setUserId("user456");
         testTask2.setParameters("{\"threshold\":0.8,\"lookback\":30}");
-        testTask2.setProgressPercentage(50.0);
-        testTask2.setCurrentPhase("PROCESSING");
-        testTask2.setCurrentStep(3);
-        testTask2.setTotalSteps(5);
+
+        // currentPhase removed - phase info now in progressMessage
+        // Removed currentStep and totalSteps fields
         testTask2.setCancellationRequested(false);
 
         // Create test task 3 - COMPLETED task
@@ -99,12 +96,10 @@ public class TaskDaoTest extends AbstractUnitTest {
         testTask3.setStartTime(testStartTime);
         testTask3.setEndTime(testEndTime);
         testTask3.setUserId("user789");
-        testTask3.setProgressPercentage(100.0);
-        testTask3.setCurrentPhase("COMPLETED");
-        testTask3.setCurrentStep(5);
-        testTask3.setTotalSteps(5);
+
+        // currentPhase removed - phase info now in progressMessage
+        // Removed currentStep, totalSteps, and resultType fields
         testTask3.setResultUrl("/downloads/report_123.tsv");
-        testTask3.setResultType("TSV");
         testTask3.setCancellationRequested(false);
 
         // Create test task 4 - FAILED task
@@ -119,8 +114,8 @@ public class TaskDaoTest extends AbstractUnitTest {
         testTask4.setEndTime(testEndTime);
         testTask4.setErrorMessage("Invalid file format");
         testTask4.setUserId("user999");
-        testTask4.setProgressPercentage(50.0);
-        testTask4.setCurrentPhase("FAILED");
+
+        // currentPhase removed - phase info now in progressMessage
         testTask4.setCancellationRequested(false);
     }
 
@@ -169,9 +164,9 @@ public class TaskDaoTest extends AbstractUnitTest {
         // Modify the task
         testTask1.setStatus("RUNNING");
         testTask1.setProcessedRecords(500);
-        testTask1.setProgressPercentage(50.0);
-        testTask1.setCurrentPhase("PROCESSING");
-        testTask1.setCurrentStep(3);
+
+        // currentPhase removed - phase info now in progressMessage
+        // Removed currentStep field
 
         // When: Update the task
         taskDao.update(testTask1);
@@ -183,8 +178,8 @@ public class TaskDaoTest extends AbstractUnitTest {
         assertEquals("Status should be updated", "RUNNING", testTask1.getStatus());
         assertEquals("Processed records should be updated", Integer.valueOf(500), testTask1.getProcessedRecords());
         assertEquals("Progress should be updated", 50.0, testTask1.getProgressPercentage(), 0.01);
-        assertEquals("Phase should be updated", "PROCESSING", testTask1.getCurrentPhase());
-        assertEquals("Step should be updated", Integer.valueOf(3), testTask1.getCurrentStep());
+        // currentPhase removed - phase info now in progressMessage
+        // Removed currentStep field assertion
     }
 
     /**
@@ -873,10 +868,9 @@ public class TaskDaoTest extends AbstractUnitTest {
         maxTask.setErrorMessage(generateString("D", 1000)); // Max 1000 chars
         maxTask.setUserId(generateString("E", 50)); // Max 50 chars
         maxTask.setParameters(generateString("F", 2000)); // Max 2000 chars
-        maxTask.setCurrentPhase(generateString("G", 50)); // Max 50 chars
+        // currentPhase removed - phase info now in progressMessage
         maxTask.setResultUrl(generateString("H", 500)); // Max 500 chars
-        maxTask.setResultType(generateString("I", 50)); // Max 50 chars
-        maxTask.setMetadata(generateString("J", 4000)); // Max 4000 chars
+        // Removed resultType and metadata fields
 
         // When: Insert the task
         taskDao.insert(maxTask);
@@ -912,10 +906,10 @@ public class TaskDaoTest extends AbstractUnitTest {
         assertFalse("PENDING task should not be cancelled", isCancelled);
 
         // Test progress update
-        testTask1.updateProgress(75.0, "FINALIZING", "Almost done");
+        testTask1.updateProgress(75.0, "FINALIZING: Almost done");
         assertEquals("Should update progress", 75.0, testTask1.getProgressPercentage(), 0.01);
-        assertEquals("Should update phase", "FINALIZING", testTask1.getCurrentPhase());
-        assertNotNull("Should set metadata", testTask1.getMetadata());
+        // currentPhase removed - phase info now in progressMessage
+        // Removed metadata field assertion
 
         // Test cancellation request
         testTask1.requestCancellation();

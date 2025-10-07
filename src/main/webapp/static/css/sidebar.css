@@ -6,6 +6,14 @@
     min-height: 100vh;
     background-color: #333;
     padding: 0;
+    border-right: 1px solid #2a2a2a;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Dark mode sidebar styles */
+[data-theme="dark"] #sidebar-container {
+    background-color: var(--bg-soft);
+    border-right-color: var(--border);
 }
 
 /* Sidebar sizes when expanded and expanded */
@@ -20,6 +28,22 @@
 #sidebar-container .list-group a {
     height: 50px;
     color: white;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#sidebar-container .list-group a:hover {
+    background-color: #2a2f36;
+    color: #e6e6e6;
+}
+
+/* Dark mode menu items */
+[data-theme="dark"] #sidebar-container .list-group a {
+    color: var(--text);
+}
+
+[data-theme="dark"] #sidebar-container .list-group a:hover {
+    background-color: var(--border);
+    color: var(--text);
 }
 
 /* Submenu item*/
@@ -35,14 +59,28 @@
 .sidebar-separator-title {
     background-color: #333;
     height: 35px;
+    transition: background-color 0.3s ease;
 }
 .sidebar-separator {
     background-color: #333;
     height: 25px;
+    transition: background-color 0.3s ease;
 }
 .logo-separator {
     background-color: #333;
     height: 60px;
+    transition: background-color 0.3s ease;
+}
+
+/* Dark mode separators */
+[data-theme="dark"] .sidebar-separator-title,
+[data-theme="dark"] .sidebar-separator,
+[data-theme="dark"] .logo-separator {
+    background-color: var(--bg-soft);
+}
+
+[data-theme="dark"] .sidebar-separator-title {
+    color: var(--muted);
 }
 
 /* Closed submenu icon */

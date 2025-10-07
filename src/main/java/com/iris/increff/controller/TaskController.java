@@ -97,7 +97,7 @@ public class TaskController {
             
             // Set cancellation flag
             task.requestCancellation();
-            task.updateProgress(task.getProgressPercentage(), "CANCELLING", "Cancellation requested");
+            task.updateProgress(task.getProgressPercentage(), "CANCELLING: Cancellation requested");
             taskDao.update(task);
             
             logger.info("✅ Cancellation requested for task: {}", taskId);

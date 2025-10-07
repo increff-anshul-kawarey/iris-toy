@@ -6,14 +6,15 @@ function fill1stTile()
 	// Tile 1: Sales Data Records
 	var salesCount = tileData.totalSalesRecords ? tileData.totalSalesRecords.toLocaleString() : tileData.dashBoardTile1;
 	var salesStatus = tileData.salesDataStatus || 'Data Records';
-	tileTag ='<div class="card bg-primary text-white h-100 d-flex flex-column">'
-	          +'<div class="card-body text-center py-3 flex-grow-1 d-flex flex-column justify-content-center">'
-	          +'<div class="mb-2"><i class="fa fa-database fa-2x"></i></div>'
-	          +'<h2>'+salesCount+'</h2><h6>Sales Records</h6>'
-	          +'<small class="opacity-75">'+salesStatus+'</small></div>'
+	tileTag ='<div class="dashboard-tile-modern tile-primary h-100 d-flex flex-column">'
+	          +'<div class="dashboard-tile-header">'
+	          +'<div class="dashboard-tile-icon"><i class="fa fa-database"></i></div>'
+	          +'<div class="dashboard-tile-value">'+salesCount+'</div>'
+	          +'<div class="dashboard-tile-label">Sales Records</div>'
+	          +'<small class="text-muted">'+salesStatus+'</small></div>'
 	          +'<div class="card-footer bg-transparent border-0 text-center pt-0">'
-	          +'<div class="small mb-2 opacity-75">Last updated: '+formatCurrentDate()+'</div>'
-	          +'<a href="#" class="text-white text-decoration-none" onclick="showCard1Detail()">'
+	          +'<div class="small mb-2 text-muted">Last updated: '+formatCurrentDate()+'</div>'
+	          +'<a href="#" class="text-decoration-none" onclick="showCard1Detail()">'
 	          +'<div class="d-flex justify-content-between align-items-center">'
              +'<span>View Details</span><i class="fa fa-chevron-right"></i></div></a></div></div>'
 	tile.append(tileTag)
@@ -26,14 +27,15 @@ function fill2ndTile()
     	var totalMaster = (tileData.totalSkus || 0) + (tileData.totalStores || 0) + (tileData.totalStyles || 0);
     	var masterStatus = tileData.masterDataStatus || 'Master Data';
     	var masterCount = totalMaster > 0 ? totalMaster.toLocaleString() : (tileData.dashBoardTile2 || 0);
-    	tileTag ='<div class="card bg-success text-white h-100 d-flex flex-column">'
-    	         +'<div class="card-body text-center py-3 flex-grow-1 d-flex flex-column justify-content-center">'
-    	         +'<div class="mb-2"><i class="fa fa-cubes fa-2x"></i></div>'
-    	         +'<h2>'+masterCount+'</h2><h6>Master Records</h6>'
-    	         +'<small class="opacity-75">'+masterStatus+'</small></div>'
+    	tileTag ='<div class="dashboard-tile-modern tile-success h-100 d-flex flex-column">'
+    	         +'<div class="dashboard-tile-header">'
+    	         +'<div class="dashboard-tile-icon"><i class="fa fa-cubes"></i></div>'
+    	         +'<div class="dashboard-tile-value">'+masterCount+'</div>'
+    	         +'<div class="dashboard-tile-label">Master Records</div>'
+    	         +'<small class="text-muted">'+masterStatus+'</small></div>'
                  +'<div class="card-footer bg-transparent border-0 text-center pt-0">'
-                 +'<div class="small mb-2 opacity-75">Last updated: '+formatCurrentDate()+'</div>'
-                 +'<a href="#" class="text-white text-decoration-none" onclick="showCard2Detail()">'
+                 +'<div class="small mb-2 text-muted">Last updated: '+formatCurrentDate()+'</div>'
+                 +'<a href="#" class="text-decoration-none" onclick="showCard2Detail()">'
                  +'<div class="d-flex justify-content-between align-items-center">'
                  +'<span>View Details</span><i class="fa fa-chevron-right"></i></div></a></div></div>'
     	tile.append(tileTag)
@@ -47,14 +49,15 @@ function fill3rdTile()
             var recentUploads = tileData.recentUploads || tileData.dashBoardTile3 || 0;
             var successRate = tileData.uploadSuccessRate || 0;
             var activityStatus = tileData.recentActivityStatus || 'Recent Activity';
-            tileTag ='<div class="card bg-info text-white h-100 d-flex flex-column">'
-                    +'<div class="card-body text-center py-3 flex-grow-1 d-flex flex-column justify-content-center">'
-                    +'<div class="mb-2"><i class="fa fa-upload fa-2x"></i></div>'
-                    +'<h2>'+recentUploads+'</h2><h6>Recent Uploads</h6>'
-                    +'<small class="opacity-75">'+Math.round(successRate)+'% success rate</small></div>'
+            tileTag ='<div class="dashboard-tile-modern tile-info h-100 d-flex flex-column">'
+                    +'<div class="dashboard-tile-header">'
+                    +'<div class="dashboard-tile-icon"><i class="fa fa-upload"></i></div>'
+                    +'<div class="dashboard-tile-value">'+recentUploads+'</div>'
+                    +'<div class="dashboard-tile-label">Recent Uploads</div>'
+                    +'<small class="text-muted">'+Math.round(successRate)+'% success rate</small></div>'
                     +'<div class="card-footer bg-transparent border-0 text-center pt-0">'
-                    +'<div class="small mb-2 opacity-75">Last updated: '+formatCurrentDate()+'</div>'
-                    +'<a href="#" class="text-white text-decoration-none" onclick="showCard3Detail()">'
+                    +'<div class="small mb-2 text-muted">Last updated: '+formatCurrentDate()+'</div>'
+                    +'<a href="#" class="text-decoration-none" onclick="showCard3Detail()">'
                     +'<div class="d-flex justify-content-between align-items-center">'
                        +'<span>View Details</span><i class="fa fa-chevron-right"></i></div></a></div></div>'
             tile.append(tileTag)
@@ -70,14 +73,15 @@ function fill4thTile()
             var totalTasks = activeTasks + pendingTasks;
             var processingStatus = tileData.processingStatus || 'Processing Status';
             var displayCount = totalTasks > 0 ? totalTasks : (tileData.dashBoardTile4 || 0);
-            tileTag ='<div class="card bg-warning text-dark h-100 d-flex flex-column">'
-                    +'<div class="card-body text-center py-3 flex-grow-1 d-flex flex-column justify-content-center">'
-                    +'<div class="mb-2"><i class="fa fa-cogs fa-2x"></i></div>'
-                    +'<h2>'+displayCount+'</h2><h6>Active Tasks</h6>'
-                    +'<small class="opacity-75">'+processingStatus+'</small></div>'
+            tileTag ='<div class="dashboard-tile-modern tile-warning h-100 d-flex flex-column">'
+                    +'<div class="dashboard-tile-header">'
+                    +'<div class="dashboard-tile-icon"><i class="fa fa-cogs"></i></div>'
+                    +'<div class="dashboard-tile-value">'+displayCount+'</div>'
+                    +'<div class="dashboard-tile-label">Active Tasks</div>'
+                    +'<small class="text-muted">'+processingStatus+'</small></div>'
                     +'<div class="card-footer bg-transparent border-0 text-center pt-0">'
-                    +'<div class="small mb-2 opacity-75">Last updated: '+formatCurrentDate()+'</div>'
-                    +'<a href="#" class="text-dark text-decoration-none" onclick="showCard4Detail()">'
+                    +'<div class="small mb-2 text-muted">Last updated: '+formatCurrentDate()+'</div>'
+                    +'<a href="#" class="text-decoration-none" onclick="showCard4Detail()">'
                     +'<div class="d-flex justify-content-between align-items-center">'
                        +'<span>View Details</span><i class="fa fa-chevron-right"></i></div></a></div></div>'
             tile.append(tileTag)

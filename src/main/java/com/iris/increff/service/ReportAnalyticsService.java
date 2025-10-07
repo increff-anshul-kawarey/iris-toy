@@ -37,6 +37,9 @@ public class ReportAnalyticsService {
     
     @Autowired
     private SalesDao salesDao;
+    
+    @Autowired
+    private com.iris.increff.dao.NoosResultDao noosResultDao;
 
     /**
      * Generate NOOS Analytics Report (Report 1)
@@ -52,38 +55,110 @@ public class ReportAnalyticsService {
             // Build analytics across recent runs (e.g., last 5)
             List<Long> recentRunIds = noosAlgorithmService.getRecentRunIds(5);
             if (recentRunIds == null || recentRunIds.isEmpty()) {
-                reportData.addAll(generateSampleNoosData());
-                logger.info("✅ Generated {} NOOS analytics report entries (sample)", reportData.size());
-                return reportData;
-            }
-
-            for (Long runId : recentRunIds) {
-                List<NoosResult> runResults = noosAlgorithmService.getResultsByRunId(runId);
-                if (runResults == null || runResults.isEmpty()) {
-                    continue;
+                // Fallback: group by calculatedDate day when runIds are absent (legacy data)
+                // Use DAO method that returns all results ordered by date (not limited to latest run)
+                List<NoosResult> latestResults = noosResultDao.getLatestResults();
+                if (latestResults == null || latestResults.isEmpty()) {
+                    reportData.addAll(generateSampleNoosData());
+                    logger.info("✅ Generated {} NOOS analytics report entries (sample)", reportData.size());
+                    return reportData;
                 }
 
-                Date executionDate = noosAlgorithmService.getRunDate(runId);
+                Map<String, List<NoosResult>> byDay = new java.util.HashMap<>();
+                for (NoosResult r : latestResults) {
+                    if (r.getCalculatedDate() == null) continue;
+                    String dayKey = new java.text.SimpleDateFormat("yyyy-MM-dd").format(r.getCalculatedDate());
+                    byDay.computeIfAbsent(dayKey, k -> new java.util.ArrayList<>()).add(r);
+                }
 
-                long coreCount = runResults.stream().filter(r -> "core".equalsIgnoreCase(r.getType())).count();
-                long bestsellerCount = runResults.stream().filter(r -> "bestseller".equalsIgnoreCase(r.getType())).count();
-                long fashionCount = runResults.stream().filter(r -> "fashion".equalsIgnoreCase(r.getType())).count();
+                for (Map.Entry<String, List<NoosResult>> e : byDay.entrySet()) {
+                    List<NoosResult> runResults = e.getValue();
+                    Date executionDate = runResults.get(0).getCalculatedDate();
 
-                String algorithmLabel = "NOOS Analysis " + (executionDate != null ? executionDate.toString().substring(0, 10) : ("Run " + runId));
+                    long coreCount = runResults.stream().filter(r -> "core".equalsIgnoreCase(r.getType())).count();
+                    long bestsellerCount = runResults.stream().filter(r -> "bestseller".equalsIgnoreCase(r.getType())).count();
+                    long fashionCount = runResults.stream().filter(r -> "fashion".equalsIgnoreCase(r.getType())).count();
 
-                Report1Data reportItem = new Report1Data(
-                    executionDate,
-                    algorithmLabel,
-                    "COMPLETED",
-                    runResults.size(),
-                    (int) coreCount,
-                    (int) bestsellerCount,
-                    (int) fashionCount,
-                    2.5,
-                    "Real algorithm execution"
-                );
+                    String algorithmLabel = "NOOS Analysis " + e.getKey();
 
-                reportData.add(reportItem);
+                    Report1Data reportItem = new Report1Data(
+                        executionDate,
+                        algorithmLabel,
+                        "COMPLETED",
+                        runResults.size(),
+                        (int) coreCount,
+                        (int) bestsellerCount,
+                        (int) fashionCount,
+                        2.5,
+                        "Legacy grouping by date"
+                    );
+                    reportData.add(reportItem);
+                }
+            } else {
+                // Filter out null run IDs (legacy data without run tracking)
+                java.util.List<Long> filteredRunIds = new java.util.ArrayList<>();
+                for (Long id : recentRunIds) {
+                    if (id != null) filteredRunIds.add(id);
+                }
+                if (filteredRunIds.isEmpty()) {
+                    // Fallback to date-grouping when runIds are null
+                    List<NoosResult> allResults = noosResultDao.getLatestResults();
+                    java.util.Map<String, java.util.List<NoosResult>> byDay = new java.util.HashMap<>();
+                    for (NoosResult r : allResults) {
+                        if (r.getCalculatedDate() == null) continue;
+                        String dayKey = new java.text.SimpleDateFormat("yyyy-MM-dd").format(r.getCalculatedDate());
+                        byDay.computeIfAbsent(dayKey, k -> new java.util.ArrayList<>()).add(r);
+                    }
+                    for (java.util.Map.Entry<String, java.util.List<NoosResult>> e : byDay.entrySet()) {
+                        java.util.List<NoosResult> runResults = e.getValue();
+                        Date executionDate = runResults.get(0).getCalculatedDate();
+                        long coreCount = runResults.stream().filter(r -> "core".equalsIgnoreCase(r.getType())).count();
+                        long bestsellerCount = runResults.stream().filter(r -> "bestseller".equalsIgnoreCase(r.getType())).count();
+                        long fashionCount = runResults.stream().filter(r -> "fashion".equalsIgnoreCase(r.getType())).count();
+                        String algorithmLabel = "NOOS Analysis " + e.getKey();
+                        Report1Data reportItem = new Report1Data(
+                            executionDate,
+                            algorithmLabel,
+                            "COMPLETED",
+                            runResults.size(),
+                            (int) coreCount,
+                            (int) bestsellerCount,
+                            (int) fashionCount,
+                            2.5,
+                            "Legacy grouping by date"
+                        );
+                        reportData.add(reportItem);
+                    }
+                } else {
+                for (Long runId : filteredRunIds) {
+                    List<NoosResult> runResults = noosAlgorithmService.getResultsByRunId(runId);
+                    if (runResults == null || runResults.isEmpty()) {
+                        continue;
+                    }
+
+                    Date executionDate = noosAlgorithmService.getRunDate(runId);
+
+                    long coreCount = runResults.stream().filter(r -> "core".equalsIgnoreCase(r.getType())).count();
+                    long bestsellerCount = runResults.stream().filter(r -> "bestseller".equalsIgnoreCase(r.getType())).count();
+                    long fashionCount = runResults.stream().filter(r -> "fashion".equalsIgnoreCase(r.getType())).count();
+
+                    String algorithmLabel = "NOOS Analysis " + (executionDate != null ? executionDate.toString().substring(0, 10) : ("Run " + runId));
+
+                    Report1Data reportItem = new Report1Data(
+                        executionDate,
+                        algorithmLabel,
+                        "COMPLETED",
+                        runResults.size(),
+                        (int) coreCount,
+                        (int) bestsellerCount,
+                        (int) fashionCount,
+                        2.5,
+                        "Real algorithm execution"
+                    );
+
+                    reportData.add(reportItem);
+                }
+                }
             }
 
             logger.info("✅ Generated {} NOOS analytics report entries", reportData.size());
@@ -106,30 +181,57 @@ public class ReportAnalyticsService {
         try {
             List<Report2Data> reportData = new ArrayList<>();
             
-            // Get task statistics for different types
-            String[] taskTypes = {"UPLOAD_SALES", "UPLOAD_STYLES", "UPLOAD_STORES", "UPLOAD_SKUS", "RUN_NOOS"};
-            
-            for (String taskType : taskTypes) {
-                // Get recent task stats (last 7 days)
-                long[] stats = taskDao.getRecentTaskStats(7);
+            // Map logical sections to actual taskType values used in system
+            java.util.LinkedHashMap<String, String> typeMap = new java.util.LinkedHashMap<>();
+            typeMap.put("UPLOAD_SALES", "SALES_UPLOAD");
+            typeMap.put("UPLOAD_STYLES", "STYLES_UPLOAD");
+            typeMap.put("UPLOAD_STORES", "STORES_UPLOAD");
+            typeMap.put("UPLOAD_SKUS", "SKUS_UPLOAD");
+            typeMap.put("RUN_NOOS", "ALGORITHM_RUN");
+
+            for (java.util.Map.Entry<String, String> entry : typeMap.entrySet()) {
+                String label = entry.getKey();
+                String actualType = entry.getValue();
+
+                long[] stats = taskDao.getRecentTaskStatsByType(actualType, 7);
                 long totalTasks = stats[0];
                 long successfulTasks = stats[1];
-                long failedTasks = totalTasks - successfulTasks;
+                long failedTasks = stats[2];
                 double successRate = totalTasks > 0 ? (successfulTasks * 100.0) / totalTasks : 0.0;
-                
+
                 String systemStatus = determineSystemStatus(successRate, totalTasks);
-                
+
+                // Compute average execution time for this type over last 7 days
+                java.util.List<com.iris.increff.model.Task> recentTasks = taskDao.getTasksByTypeSince(actualType, 7);
+                double avgSeconds = 0.0;
+                if (!recentTasks.isEmpty()) {
+                    long totalMillis = 0L;
+                    int counted = 0;
+                    for (com.iris.increff.model.Task t : recentTasks) {
+                        if (t.getStartTime() != null && t.getEndTime() != null) {
+                            long dur = t.getEndTime().getTime() - t.getStartTime().getTime();
+                            if (dur > 0) {
+                                totalMillis += dur;
+                                counted++;
+                            }
+                        }
+                    }
+                    if (counted > 0) {
+                        avgSeconds = (totalMillis / (double) counted) / 1000.0;
+                    }
+                }
+
                 Report2Data reportItem = new Report2Data(
                     new Date(),
-                    taskType,
+                    label,
                     (int) totalTasks,
                     (int) successfulTasks,
                     (int) failedTasks,
                     successRate,
-                    estimateExecutionTime(taskType),
+                    avgSeconds > 0 ? avgSeconds / 60.0 : estimateExecutionTime(label),
                     systemStatus
                 );
-                
+
                 reportData.add(reportItem);
             }
             

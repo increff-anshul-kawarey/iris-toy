@@ -84,17 +84,17 @@ public class NoosAlgorithmService {
         Task task = taskDao.select(taskId);
         if (task == null) {
             logger.error("❌ Task not found: {}", taskId);
-            return CompletableFuture.completedFuture(null);
+            throw new RuntimeException("Task not found: " + taskId);
         }
 
         MDC.put("taskId", String.valueOf(taskId));
-        logger.info("Starting async NOOS Algorithm execution for task: {} (thread: {}, status: {})",
+        logger.info("✅ Starting async NOOS Algorithm execution for task: {} (thread: {}, status: {})",
                    taskId, Thread.currentThread().getName(), task.getStatus());
 
         try {
             // Update task to RUNNING status
             task.setStatus("RUNNING");
-            task.updateProgress(0.0, "INITIALIZING", "Starting NOOS algorithm...");
+            task.updateProgress(0.0, "INITIALIZING: Starting NOOS algorithm...");
             taskDao.update(task);
 
             // Check for cancellation before each major phase
@@ -103,7 +103,7 @@ public class NoosAlgorithmService {
             }
 
             // Phase 1: Data Loading (0% → 20%)
-            task.updateProgress(5.0, "DATA_LOADING", "Loading sales data...");
+            task.updateProgress(5.0, "DATA_LOADING: Loading sales data...");
             taskDao.update(task);
             logger.debug("Progress 5% - Loading sales data...");
 
@@ -115,7 +115,7 @@ public class NoosAlgorithmService {
                 return CompletableFuture.completedFuture(task);
             }
 
-            task.updateProgress(15.0, "DATA_LOADING", String.format("Loaded %d sales records", allSales.size()));
+            task.updateProgress(15.0, String.format("DATA_LOADING: Loaded %d sales records", allSales.size()));
             taskDao.update(task);
             logger.debug("Progress 15% - Loaded {} sales records", allSales.size());
 
@@ -125,7 +125,7 @@ public class NoosAlgorithmService {
             }
 
             // Phase 2: Data Processing (20% → 50%)
-            task.updateProgress(20.0, "PROCESSING", "Applying liquidation cleanup...");
+            task.updateProgress(20.0, "PROCESSING: Applying liquidation cleanup...");
             taskDao.update(task);
             logger.debug("Progress 20% - Applying liquidation cleanup...");
 
@@ -134,7 +134,7 @@ public class NoosAlgorithmService {
             logger.info("🧹 After liquidation cleanup ({}%): {} sales records",
                        liquidationThreshold * 100, cleanedSales.size());
 
-            task.updateProgress(35.0, "PROCESSING", String.format("Cleaned data: %d records remaining", cleanedSales.size()));
+            task.updateProgress(35.0, String.format("PROCESSING: Cleaned data: %d records remaining", cleanedSales.size()));
             taskDao.update(task);
 
             // Check for cancellation
@@ -143,13 +143,13 @@ public class NoosAlgorithmService {
             }
 
             // Aggregate sales by style
-            task.updateProgress(40.0, "PROCESSING", "Aggregating sales by style...");
+            task.updateProgress(40.0, "PROCESSING: Aggregating sales by style...");
             taskDao.update(task);
 
             Map<String, StyleSalesData> styleAggregates = aggregateSalesByStyle(cleanedSales);
             logger.info("📈 Aggregated data for {} unique styles", styleAggregates.size());
 
-            task.updateProgress(50.0, "PROCESSING", String.format("Aggregated %d unique styles", styleAggregates.size()));
+            task.updateProgress(50.0, String.format("PROCESSING: Aggregated %d unique styles", styleAggregates.size()));
             taskDao.update(task);
 
             // Check for cancellation
@@ -158,7 +158,7 @@ public class NoosAlgorithmService {
             }
 
             // Phase 3: Classification (50% → 85%)
-            task.updateProgress(55.0, "CLASSIFICATION", "Calculating category benchmarks...");
+            task.updateProgress(55.0, "CLASSIFICATION: Calculating category benchmarks...");
             taskDao.update(task);
 
             Map<String, CategoryBenchmark> categoryBenchmarks = calculateCategoryBenchmarks(styleAggregates);
@@ -170,7 +170,7 @@ public class NoosAlgorithmService {
             int totalStyles = styleList.size();
             int processedStyles = 0;
 
-            task.updateProgress(60.0, "CLASSIFICATION", "Classifying styles...");
+            task.updateProgress(60.0, "CLASSIFICATION: Classifying styles...");
             taskDao.update(task);
 
             // Use a single timestamp for the run for better grouping
@@ -189,13 +189,13 @@ public class NoosAlgorithmService {
                 // Update progress every 50 styles
                 if (processedStyles % 50 == 0) {
                     double progress = 60.0 + (25.0 * processedStyles / totalStyles); // 60% → 85%
-                    task.updateProgress(progress, "CLASSIFICATION", 
-                                      String.format("Classified %d/%d styles", processedStyles, totalStyles));
+                    task.updateProgress(progress, 
+                                      String.format("CLASSIFICATION: Classified %d/%d styles", processedStyles, totalStyles));
                     taskDao.update(task);
                 }
             }
 
-            task.updateProgress(85.0, "CLASSIFICATION", String.format("Classified all %d styles", totalStyles));
+            task.updateProgress(85.0, String.format("CLASSIFICATION: Classified all %d styles", totalStyles));
             taskDao.update(task);
 
             // Check for cancellation
@@ -204,7 +204,7 @@ public class NoosAlgorithmService {
             }
 
             // Phase 4: Saving Results (85% → 100%)
-            task.updateProgress(90.0, "SAVING", "Saving results to database...");
+            task.updateProgress(90.0, "SAVING: Saving results to database...");
             taskDao.update(task);
 
             logger.info("💾 Saving {} NOOS results to database", results.size());
@@ -222,8 +222,8 @@ public class NoosAlgorithmService {
             }
 
             // Complete task with success
-            task.updateProgress(100.0, "COMPLETED", 
-                              String.format("Completed: %d Core, %d Bestseller, %d Fashion", 
+            task.updateProgress(100.0, 
+                              String.format("COMPLETED: %d Core, %d Bestseller, %d Fashion", 
                                           coreCount, bestsellerCount, fashionCount));
             logger.debug("Progress 100% - Completed: {} Core, {} Bestseller, {} Fashion", coreCount, bestsellerCount, fashionCount);
             completeTask(task, results.size(), coreCount, bestsellerCount, fashionCount);
@@ -231,14 +231,21 @@ public class NoosAlgorithmService {
             logger.info("✅ NOOS Algorithm completed successfully!");
             logger.info("📊 Results: {} Core, {} Bestseller, {} Fashion styles",
                        coreCount, bestsellerCount, fashionCount);
+            
+            return CompletableFuture.completedFuture(task);
 
         } catch (Exception e) {
             logger.error("❌ NOOS Algorithm failed for task {}: {}", taskId, e.getMessage(), e);
-            failTask(task, e.getMessage());
-        }
-
-        try {
-            return CompletableFuture.completedFuture(task);
+            try {
+                Task failedTask = taskDao.select(taskId);
+                if (failedTask != null && !"FAILED".equals(failedTask.getStatus())) {
+                    failTask(failedTask, e.getMessage());
+                }
+                return CompletableFuture.completedFuture(failedTask);
+            } catch (Exception failException) {
+                logger.error("❌ Failed to update task status: {}", failException.getMessage());
+                throw new RuntimeException("NOOS Algorithm failed: " + e.getMessage(), e);
+            }
         } finally {
             MDC.remove("taskId");
         }
@@ -569,7 +576,7 @@ public class NoosAlgorithmService {
         if (refreshedTask != null && refreshedTask.isCancellationRequested()) {
             logger.info("🛑 Cancellation detected for task: {}", task.getId());
             task.setStatus("CANCELLED");
-            task.updateProgress(task.getProgressPercentage(), "CANCELLED", "Task was cancelled by user");
+            task.updateProgress(task.getProgressPercentage(), "CANCELLED: Task was cancelled by user");
             taskDao.update(task);
             return true;
         }

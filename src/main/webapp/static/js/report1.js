@@ -7,9 +7,18 @@ function displayReport1List(data) {
     $('#report1Table').append(report1TableHead)
 	var $tbody = $('#report1Table').find('tbody');
 	$tbody.empty();
-	for (var i in data) {
-		var dataItem = data[i];
-		var index = parseInt(i) + 1
+    // Sort by executionDate descending if available
+    try {
+        data = (data || []).slice().sort(function(a,b){
+            var ad = a && a.executionDate ? new Date(a.executionDate).getTime() : 0;
+            var bd = b && b.executionDate ? new Date(b.executionDate).getTime() : 0;
+            return bd - ad;
+        });
+    } catch(e) {}
+
+    for (var i in data) {
+        var dataItem = data[i];
+        var index = parseInt(i) + 1
 		
 		// Use meaningful field names (with fallback to legacy fields)
 		var algorithmLabel = dataItem.algorithmLabel || dataItem.field1 || 'N/A';
@@ -37,9 +46,9 @@ function displayReport1List(data) {
 			+ '</tr>';
 		$tbody.append(row);
 	}
-	$('#report1Table').DataTable({
-		"order": [[ 0, "desc" ]], // Sort by most recent first
-		"pageLength": 25
-	});
+    $('#report1Table').DataTable({
+        "order": [], // keep the pre-sorted (executionDate desc) order
+        "pageLength": 25
+    });
 }
 $(document).ready(getReport1List);

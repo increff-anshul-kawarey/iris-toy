@@ -26,6 +26,7 @@ var report2TableHead=`
                     <th>Sr.No</th>
                     <th>Total Tasks</th>
                     <th>Successful Tasks</th>
+                    <th>Failed Tasks</th>
                     <th>Task Type</th>
                     <th>Success Rate</th>
                     <th>Avg Execution Time</th>
@@ -38,6 +39,7 @@ var report2TableHead=`
                     <th>Sr.No</th>
                     <th>Total Tasks</th>
                     <th>Successful Tasks</th>
+                    <th>Failed Tasks</th>
                     <th>Task Type</th>
                     <th>Success Rate</th>
                     <th>Avg Execution Time</th>

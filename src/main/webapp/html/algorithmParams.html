@@ -252,7 +252,7 @@
 </div>
 
 <!-- Sticky footer for primary actions -->
-<div style="position: sticky; bottom: 0; z-index: 100; background: #fff; border-top: 1px solid #e5e5e5; padding: 0.75rem 1rem;">
+<div class="sticky-footer">
     <div class="container-fluid">
         <div class="d-flex justify-content-end">
             <button type="button" class="btn-primary-modern" id="runAlgorithmBtn">
@@ -261,13 +261,15 @@
             </button>
         </div>
     </div>
-    </div>
+</div>
 
 <!-- Success/Error Messages will be handled by JavaScript alerts or existing toast system -->
 
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
 <script th:src="@{/static/js/toast.js}"></script>
-<script src="../static/js/algorithmParams.js"></script>
+<script th:src="@{/static/js/sidebar.js}"></script>
+<script th:src="@{/static/js/app.js}"></script>
+<script th:src="@{/static/js/algorithmParams.js}"></script>
 </body>
 </html>

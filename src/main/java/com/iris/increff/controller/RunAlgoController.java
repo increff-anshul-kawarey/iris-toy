@@ -54,7 +54,7 @@ public class RunAlgoController {
             task.setStartTime(new Date());
             task.setUserId("system");
             task.setParameters(formatParameters(parameters));
-            task.updateProgress(0.0, "PENDING", "Task created, waiting to start...");
+            task.updateProgress(0.0, "PENDING: Task created, waiting to start...");
             
             // Save task to get ID
             taskDao.insert(task);

@@ -114,6 +114,13 @@ public class TaskDao {
     }
 
     /**
+     * Delete all tasks (for test cleanup)
+     */
+    public void deleteAll() {
+        entityManager.createQuery("DELETE FROM Task").executeUpdate();
+    }
+
+    /**
      * Find tasks by status with limit
      */
     public List<Task> findByStatus(String status, int limit) {
@@ -166,5 +173,50 @@ public class TaskDao {
         String hql = "SELECT COUNT(t) FROM Task t WHERE t.status IN ('PENDING', 'RUNNING')";
         TypedQuery<Long> query = entityManager.createQuery(hql, Long.class);
         return query.getSingleResult().intValue();
+    }
+
+    /**
+     * Get recent task statistics filtered by taskType
+     * @param taskType Task type value (e.g., STYLES_UPLOAD, SALES_UPLOAD, ALGORITHM_RUN)
+     * @param days Number of days to look back
+     * @return Array with [totalTasks, completedTasks, failedTasks]
+     */
+    public long[] getRecentTaskStatsByType(String taskType, int days) {
+        long cutoffTime = System.currentTimeMillis() - (days * 24L * 60L * 60L * 1000L);
+        java.util.Date cutoffDate = new java.util.Date(cutoffTime);
+
+        String totalHql = "SELECT COUNT(t) FROM Task t WHERE t.createdDate >= :cutoffDate AND t.taskType = :taskType";
+        TypedQuery<Long> totalQuery = entityManager.createQuery(totalHql, Long.class);
+        totalQuery.setParameter("cutoffDate", cutoffDate);
+        totalQuery.setParameter("taskType", taskType);
+        long totalTasks = totalQuery.getSingleResult();
+
+        String completedHql = "SELECT COUNT(t) FROM Task t WHERE t.createdDate >= :cutoffDate AND t.taskType = :taskType AND t.status = 'COMPLETED'";
+        TypedQuery<Long> completedQuery = entityManager.createQuery(completedHql, Long.class);
+        completedQuery.setParameter("cutoffDate", cutoffDate);
+        completedQuery.setParameter("taskType", taskType);
+        long completedTasks = completedQuery.getSingleResult();
+
+        String failedHql = "SELECT COUNT(t) FROM Task t WHERE t.createdDate >= :cutoffDate AND t.taskType = :taskType AND t.status = 'FAILED'";
+        TypedQuery<Long> failedQuery = entityManager.createQuery(failedHql, Long.class);
+        failedQuery.setParameter("cutoffDate", cutoffDate);
+        failedQuery.setParameter("taskType", taskType);
+        long failedTasks = failedQuery.getSingleResult();
+
+        return new long[]{totalTasks, completedTasks, failedTasks};
+    }
+
+    /**
+     * Get tasks by type in last N days
+     */
+    public List<Task> getTasksByTypeSince(String taskType, int days) {
+        long cutoffTime = System.currentTimeMillis() - (days * 24L * 60L * 60L * 1000L);
+        java.util.Date cutoffDate = new java.util.Date(cutoffTime);
+
+        String hql = "FROM Task t WHERE t.createdDate >= :cutoffDate AND t.taskType = :taskType ORDER BY t.startTime DESC";
+        TypedQuery<Task> query = entityManager.createQuery(hql, Task.class);
+        query.setParameter("cutoffDate", cutoffDate);
+        query.setParameter("taskType", taskType);
+        return query.getResultList();
     }
 }

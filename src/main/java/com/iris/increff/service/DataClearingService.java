@@ -4,6 +4,8 @@ import com.iris.increff.dao.SalesDao;
 import com.iris.increff.dao.SkuDao;
 import com.iris.increff.dao.StyleDao;
 import com.iris.increff.dao.StoreDao;
+import com.iris.increff.dao.TaskDao;
+import com.iris.increff.dao.NoosResultDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +47,16 @@ public class DataClearingService {
     private StoreDao storeDao;
 
     @Autowired
+    private TaskDao taskDao;
+
+    @Autowired
+    private NoosResultDao noosResultDao;
+
+    @Autowired
     private AuditService auditService;
+
+    @javax.persistence.PersistenceContext
+    private javax.persistence.EntityManager entityManager;
 
     /**
      * Clear data for Style upload - must clear in dependency order
@@ -119,16 +130,51 @@ public class DataClearingService {
         Long skuCount = skuDao.getTotalSkuCount();
         Long styleCount = styleDao.getTotalStyleCount();
         Long storeCount = storeDao.getTotalStoreCount();
+        Long taskCount = taskDao.getCount();
+        Long noosResultCount = noosResultDao.getCount();
         
-        salesDao.deleteAll();   // Clear deepest children first
-        skuDao.deleteAll();     // Clear middle level
-        styleDao.deleteAll();   // Clear parents
-        storeDao.deleteAll();   // Independent parent
+        salesDao.deleteAll();      // Clear deepest children first
+        skuDao.deleteAll();        // Clear middle level
+        styleDao.deleteAll();      // Clear parents
+        storeDao.deleteAll();      // Independent parent
+        taskDao.deleteAll();       // Clear tasks
+        noosResultDao.deleteAll(); // Clear NOOS results
+
+        // Reset auto-increment sequences for clean IDs across test runs
+        try {
+            resetAutoIncrement("sales");
+            resetAutoIncrement("skus");
+            resetAutoIncrement("styles");
+            resetAutoIncrement("stores");
+            resetAutoIncrement("tasks");
+            resetAutoIncrement("noos_results");
+        } catch (Exception e) {
+            logger.warn("Failed to reset auto-increment counters: {}", e.getMessage());
+        }
         
         // Audit log the clear all operation
-        String details = String.format("Cleared all data: %d sales, %d SKUs, %d styles, %d stores", 
-            salesCount, skuCount, styleCount, storeCount);
+        String details = String.format("Cleared all data: %d sales, %d SKUs, %d styles, %d stores, %d tasks, %d NOOS results", 
+            salesCount, skuCount, styleCount, storeCount, taskCount, noosResultCount);
         auditService.logBulkAction("System", "CLEAR_ALL_DATA", 
-            (int)(salesCount + skuCount + styleCount + storeCount), details, "system");
+            (int)(salesCount + skuCount + styleCount + storeCount + taskCount + noosResultCount), details, "system");
+    }
+
+    /**
+     * Reset auto-increment/identity for given table in a database-agnostic manner where possible.
+     * Supports H2 (test) and MySQL modes.
+     */
+    private void resetAutoIncrement(String tableName) {
+        // MySQL fallback
+        try {
+            entityManager.createNativeQuery("ALTER TABLE " + tableName + " AUTO_INCREMENT = 1").executeUpdate();
+        } catch (Exception ignored) { }
+        
+        // H2 in-memory (test profile)
+        try {
+            entityManager.createNativeQuery("ALTER TABLE " + tableName + " ALTER COLUMN id RESTART WITH 1").executeUpdate();
+            return;
+        } catch (Exception ignored) { }
+
+        
     }
 }

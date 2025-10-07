@@ -6,12 +6,15 @@ import com.iris.increff.model.Sales;
 import com.iris.increff.model.SKU;
 import com.iris.increff.model.Store;
 import com.iris.increff.exception.ApiException;
+import com.iris.increff.service.ValidationService.ValidationResult;
+import com.iris.increff.service.ErrorTrackingService.ErrorTracker;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -19,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service for handling Sales-related operations including TSV processing.
@@ -48,6 +52,12 @@ public class SalesService {
 
     @Autowired
     private AuditService auditService;
+    
+    @Autowired
+    private ValidationService validationService;
+    
+    @Autowired
+    private ErrorTrackingService errorTrackingService;
     /**
      * Expected date format in sales TSV files
      */
@@ -55,15 +65,12 @@ public class SalesService {
     private final SimpleDateFormat dateFormatter = new SimpleDateFormat(DATE_FORMAT);
 
     /**
-     * Process and save sales from TSV data with graceful error handling.
+     * Process and save sales from TSV data with enhanced validation and error tracking.
      * Expected TSV format: day, sku, channel, quantity, discount, revenue
      * Maps to entity fields: date, skuId (via lookup), storeId (via lookup), quantity, discount, revenue
      * 
-     * Gracefully handles missing SKUs by logging warnings and skipping those rows.
-     * Allows revenue = 0 for promotional items, samples, etc.
-     * 
      * @param tsvData Parsed TSV data as list of row maps
-     * @return List of warnings (empty if all processed successfully)
+     * @return UploadResponse with success status, messages, and error tracking information
      */
     @Transactional
     public UploadResponse processAndSaveSales(ArrayList<HashMap<String, String>> tsvData) {
@@ -72,32 +79,68 @@ public class SalesService {
         List<String> warnings = new ArrayList<>();
         List<String> messages = new ArrayList<>();
         List<Sales> salesToSave = new ArrayList<>();
-        int skippedCount = 0;
+        
+        // Initialize error tracker
+        String[] headers = {"day", "sku", "channel", "quantity", "discount", "revenue"};
+        ErrorTracker errorTracker = new ErrorTracker(headers);
 
-        // First pass: Validate all data and collect errors/warnings
+        // First pass: Comprehensive validation with detailed error tracking
         for (int i = 0; i < tsvData.size(); i++) {
             HashMap<String, String> row = tsvData.get(i);
             int rowNumber = i + 2; // +2 because: +1 for 0-indexing, +1 for header row
             
             try {
-                Sales sales = convertTsvRowToSales(row, warnings, rowNumber);
+                Sales sales = convertTsvRowToSalesWithValidation(row, rowNumber, errorTracker);
                 if (sales != null) {
                     salesToSave.add(sales);
-                } else {
-                    skippedCount++;
                 }
                 
             } catch (Exception e) {
-                errors.add("Row " + rowNumber + ": " + e.getMessage());
+                errorTracker.addError(rowNumber, row, "Unexpected error: " + e.getMessage(), "SYSTEM_ERROR");
             }
         }
 
-        // If there are critical errors (not just missing SKUs), fail the upload
-        if (!errors.isEmpty()) {
+        // Generate error files and summary if there are errors or skipped rows
+        Map<String, String> errorFiles = new HashMap<>();
+        Map<String, Object> errorSummary = new HashMap<>();
+        
+        if (errorTracker.hasErrors()) {
+            try {
+                errorFiles = errorTrackingService.saveErrorFiles(errorTracker, "SALES", String.valueOf(System.currentTimeMillis()));
+                errorSummary = errorTrackingService.generateErrorSummary(errorTracker);
+                
+                // Add summary to legacy errors list for backward compatibility
+                if (errorTracker.hasValidationErrors()) {
+                    errors.add("Validation errors: " + errorTracker.getValidationErrorCount());
+                }
+                if (errorTracker.getSkippedCount() > 0) {
+                    warnings.add("Skipped rows: " + errorTracker.getSkippedCount() + " (missing dependencies)");
+                }
+                
+                // Show first few errors in legacy format
+                errors.addAll(errorTracker.getValidationErrors().stream()
+                    .limit(5) // Show first 5 validation errors
+                    .map(errorRow -> "Row " + errorRow.getRowNumber() + ": " + errorRow.getErrorReason())
+                    .collect(java.util.stream.Collectors.toList()));
+                
+                if (errorTracker.getValidationErrorCount() > 5) {
+                    errors.add("... and " + (errorTracker.getValidationErrorCount() - 5) + " more validation errors. Download error files for complete details.");
+                }
+                
+            } catch (IOException e) {
+                errors.add("Failed to generate error files: " + e.getMessage());
+            }
+        }
+
+        // If there are validation errors (not skipped rows), don't proceed with database operations
+        if (errorTracker.hasValidationErrors()) {
             response.setSuccess(false);
             response.setErrors(errors);
+            response.setWarnings(warnings);
             response.setMessages(messages);
-            response.setErrorCount(errors.size());
+            response.setErrorCount(errorTracker.getValidationErrorCount());
+            response.setSkippedCount(errorTracker.getSkippedCount());
+            response.setErrorTrackingInfo(errorSummary, errorFiles);
             return response;
         }
 
@@ -131,8 +174,8 @@ public class SalesService {
                 auditService.logBulkAction("Sales", "BULK_INSERT", salesToSave.size(), 
                     "Uploaded " + salesToSave.size() + " sales records", "system");
 
-                if (skippedCount > 0) {
-                    messages.add("Note: " + skippedCount + " rows were skipped due to missing SKUs");
+                if (errorTracker.getSkippedCount() > 0) {
+                    messages.add("Note: " + errorTracker.getSkippedCount() + " rows were skipped due to missing dependencies");
                 }
             }
 
@@ -150,7 +193,13 @@ public class SalesService {
         response.setMessages(messages);
         response.setWarnings(warnings);
         response.setRecordCount(salesToSave.size());
-        response.setSkippedCount(skippedCount);
+        response.setSkippedCount(errorTracker.getSkippedCount());
+        
+        // Include error files even for successful uploads (for skipped rows)
+        if (errorTracker.hasErrors()) {
+            response.setErrorTrackingInfo(errorSummary, errorFiles);
+        }
+        
         return response;
     }
 
@@ -308,6 +357,118 @@ public class SalesService {
      */
     public Long getSalesCount() {
         return salesDao.getTotalSalesCount();
+    }
+
+    /**
+     * Convert TSV row to Sales entity with comprehensive validation and error tracking.
+     * Uses ValidationService for detailed field validation and ErrorTracker for error collection.
+     * 
+     * @param row TSV row as key-value map
+     * @param rowNumber Row number for error reporting
+     * @param errorTracker Error tracker for collecting validation errors
+     * @return Validated Sales entity, or null if validation fails
+     */
+    private Sales convertTsvRowToSalesWithValidation(HashMap<String, String> row, int rowNumber, ErrorTracker errorTracker) {
+        Sales sales = new Sales();
+        boolean hasErrors = false;
+        
+        // Validate date
+        String dayStr = row.get("day");
+        ValidationResult dateResult = validationService.validateDate(dayStr);
+        if (!dateResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "day", dateResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            try {
+                Date salesDate = dateFormatter.parse(dayStr.trim());
+                sales.setDate(salesDate);
+            } catch (ParseException e) {
+                errorTracker.addValidationError(rowNumber, row, "day", "Invalid date format");
+                hasErrors = true;
+            }
+        }
+        
+        // Validate and lookup SKU
+        String skuCode = row.get("sku");
+        ValidationResult skuCodeResult = validationService.validateSkuCode(skuCode);
+        if (!skuCodeResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "sku", skuCodeResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            try {
+                SKU sku = skuService.findBySku(skuCode.trim().toUpperCase());
+                sales.setSkuId(sku.getId());
+            } catch (ApiException e) {
+                // This is a dependency error - SKU not found in master data
+                errorTracker.addDependencyError(rowNumber, row, "sku", skuCode.trim().toUpperCase());
+                hasErrors = true;
+            }
+        }
+        
+        // Validate and lookup store (channel)
+        String channel = row.get("channel");
+        ValidationResult branchResult = validationService.validateBranch(channel);
+        if (!branchResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "channel", branchResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            try {
+                Store store = storeService.findByBranch(channel.trim().toUpperCase());
+                sales.setStoreId(store.getId());
+            } catch (ApiException e) {
+                // This is a dependency error - Store not found in master data
+                errorTracker.addDependencyError(rowNumber, row, "channel", channel.trim().toUpperCase());
+                hasErrors = true;
+            }
+        }
+        
+        // Validate quantity
+        String quantityStr = row.get("quantity");
+        ValidationResult quantityResult = validationService.validateQuantity(quantityStr);
+        if (!quantityResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "quantity", quantityResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            try {
+                sales.setQuantity(Integer.parseInt(quantityStr.trim()));
+            } catch (NumberFormatException e) {
+                errorTracker.addValidationError(rowNumber, row, "quantity", "Invalid number format");
+                hasErrors = true;
+            }
+        }
+        
+        // Validate discount
+        String discountStr = row.get("discount");
+        ValidationResult discountResult = validationService.validateDiscount(discountStr);
+        if (!discountResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "discount", discountResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            try {
+                sales.setDiscount(new BigDecimal(discountStr.trim()));
+            } catch (NumberFormatException e) {
+                errorTracker.addValidationError(rowNumber, row, "discount", "Invalid number format");
+                hasErrors = true;
+            }
+        }
+        
+        // Validate revenue
+        String revenueStr = row.get("revenue");
+        ValidationResult revenueResult = validationService.validateRevenue(revenueStr);
+        if (!revenueResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "revenue", revenueResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            try {
+                sales.setRevenue(new BigDecimal(revenueStr.trim()));
+            } catch (NumberFormatException e) {
+                errorTracker.addValidationError(rowNumber, row, "revenue", "Invalid number format");
+                hasErrors = true;
+            }
+        }
+        
+        // Return null if any validation failed
+        return hasErrors ? null : sales;
     }
 
     /**

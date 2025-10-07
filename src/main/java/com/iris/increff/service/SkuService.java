@@ -5,14 +5,17 @@ import com.iris.increff.dao.SkuDao;
 import com.iris.increff.model.SKU;
 import com.iris.increff.model.Style;
 import com.iris.increff.exception.ApiException;
+import com.iris.increff.service.ValidationService.ValidationResult;
+import com.iris.increff.service.ErrorTrackingService.ErrorTracker;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service for handling SKU-related operations including TSV processing.
@@ -34,14 +37,20 @@ public class SkuService {
 
     @Autowired
     private AuditService auditService;
+    
+    @Autowired
+    private ValidationService validationService;
+    
+    @Autowired
+    private ErrorTrackingService errorTrackingService;
 
     /**
-     * Process and save SKUs from TSV data.
+     * Process and save SKUs from TSV data with enhanced validation and error tracking.
      * Expected TSV format: sku, style, size
      * Maps to entity fields: sku, styleId (via lookup), size
      * 
      * @param tsvData Parsed TSV data as list of row maps
-     * @return List of validation errors (empty if all successful)
+     * @return UploadResponse with success status, messages, and error tracking information
      */
     @Transactional
     public UploadResponse processAndSaveSKUs(ArrayList<HashMap<String, String>> tsvData) {
@@ -49,41 +58,72 @@ public class SkuService {
         List<String> errors = new ArrayList<>();
         List<String> messages = new ArrayList<>();
         List<SKU> skusToSave = new ArrayList<>();
+        
+        // Initialize error tracker
+        String[] headers = {"sku", "style", "size"};
+        ErrorTracker errorTracker = new ErrorTracker(headers);
 
         // Tests expect clearing messages even for UPSERT flows
         messages.add("Clearing existing data (UPSERT mode - no deletion)");
 
-        // First pass: Validate all data and collect errors
+        // First pass: Comprehensive validation with detailed error tracking
         for (int i = 0; i < tsvData.size(); i++) {
             HashMap<String, String> row = tsvData.get(i);
             int rowNumber = i + 2; // +2 because: +1 for 0-indexing, +1 for header row
 
             try {
-                SKU sku = convertTsvRowToSKU(row);
+                SKU sku = convertTsvRowToSKUWithValidation(row, rowNumber, errorTracker);
+                
+                if (sku != null) {
+                    // Check for duplicate SKU codes within the uploaded data
+                    boolean duplicateInBatch = skusToSave.stream()
+                        .anyMatch(s -> s.getSku().equals(sku.getSku()));
 
-                // Check for duplicate SKU codes within the uploaded data
-                boolean duplicateInBatch = skusToSave.stream()
-                    .anyMatch(s -> s.getSku().equals(sku.getSku()));
+                    if (duplicateInBatch) {
+                        errorTracker.addDuplicateError(rowNumber, row, "sku", sku.getSku());
+                        continue;
+                    }
 
-                if (duplicateInBatch) {
-                    errors.add("Row " + rowNumber + ": Duplicate SKU code '" +
-                               sku.getSku() + "' found within uploaded file");
-                    continue;
+                    skusToSave.add(sku);
                 }
 
-                skusToSave.add(sku);
-
             } catch (Exception e) {
-                errors.add("Row " + rowNumber + ": " + e.getMessage());
+                errorTracker.addError(rowNumber, row, "Unexpected error: " + e.getMessage(), "SYSTEM_ERROR");
+            }
+        }
+
+        // Generate error files and summary if there are errors
+        Map<String, String> errorFiles = new HashMap<>();
+        Map<String, Object> errorSummary = new HashMap<>();
+        
+        if (errorTracker.hasErrors()) {
+            try {
+                errorFiles = errorTrackingService.saveErrorFiles(errorTracker, "SKUS", String.valueOf(System.currentTimeMillis()));
+                errorSummary = errorTrackingService.generateErrorSummary(errorTracker);
+                
+                // Add error summary to legacy errors list for backward compatibility
+                errors.add("Total validation errors: " + errorTracker.getTotalErrors());
+                errors.addAll(errorTracker.getErrorRows().stream()
+                    .limit(10) // Show first 10 errors in legacy format
+                    .map(errorRow -> "Row " + errorRow.getRowNumber() + ": " + errorRow.getErrorReason())
+                    .collect(java.util.stream.Collectors.toList()));
+                
+                if (errorTracker.getTotalErrors() > 10) {
+                    errors.add("... and " + (errorTracker.getTotalErrors() - 10) + " more errors. Download error files for complete details.");
+                }
+                
+            } catch (IOException e) {
+                errors.add("Failed to generate error files: " + e.getMessage());
             }
         }
 
         // If there are validation errors, don't proceed with database operations
-        if (!errors.isEmpty()) {
+        if (errorTracker.hasErrors()) {
             response.setSuccess(false);
             response.setErrors(errors);
             response.setMessages(messages);
-            response.setErrorCount(errors.size());
+            response.setErrorCount(errorTracker.getTotalErrors());
+            response.setErrorTrackingInfo(errorSummary, errorFiles);
             return response;
         }
 
@@ -233,6 +273,60 @@ public class SkuService {
             throw new ApiException(fieldName + " must be between " + minLength + 
                                  " and " + maxLength + " characters, found: " + value.length());
         }
+    }
+
+    /**
+     * Convert TSV row to SKU entity with comprehensive validation and error tracking.
+     * Uses ValidationService for detailed field validation and ErrorTracker for error collection.
+     * 
+     * @param row TSV row as key-value map
+     * @param rowNumber Row number for error reporting
+     * @param errorTracker Error tracker for collecting validation errors
+     * @return Validated SKU entity, or null if validation fails
+     */
+    private SKU convertTsvRowToSKUWithValidation(HashMap<String, String> row, int rowNumber, ErrorTracker errorTracker) {
+        SKU sku = new SKU();
+        boolean hasErrors = false;
+        
+        // Validate SKU code
+        String skuCode = row.get("sku");
+        ValidationResult skuCodeResult = validationService.validateSkuCode(skuCode);
+        if (!skuCodeResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "sku", skuCodeResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            sku.setSku(skuCode.trim().toUpperCase());
+        }
+        
+        // Validate and lookup style
+        String styleCode = row.get("style");
+        ValidationResult styleCodeResult = validationService.validateStyleCode(styleCode);
+        if (!styleCodeResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "style", styleCodeResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            try {
+                Style style = styleService.findByStyleCode(styleCode.trim().toUpperCase());
+                sku.setStyleId(style.getId());
+            } catch (ApiException e) {
+                // This is a dependency error - style not found in master data
+                errorTracker.addDependencyError(rowNumber, row, "style", styleCode.trim().toUpperCase());
+                hasErrors = true;
+            }
+        }
+        
+        // Validate size
+        String size = row.get("size");
+        ValidationResult sizeResult = validationService.validateSize(size);
+        if (!sizeResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "size", sizeResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            sku.setSize(size.trim().toUpperCase());
+        }
+        
+        // Return null if any validation failed
+        return hasErrors ? null : sku;
     }
 
     /**

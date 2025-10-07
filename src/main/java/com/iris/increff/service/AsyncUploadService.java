@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.function.Function;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Async Upload Service for File Processing
@@ -66,12 +67,25 @@ public class AsyncUploadService {
      * @param taskId Task ID for progress tracking
      * @param fileContent Pre-read file content as byte array
      * @param fileName Original file name
+     * @return CompletableFuture<Task> for tracking completion
      */
     @Async("fileExecutor")
     @Transactional
-    public void uploadStylesAsync(Long taskId, byte[] fileContent, String fileName) {
-        processFileAsync(taskId, fileContent, fileName, "STYLES", tsvProperties.getStylesHeaders(), 
-                               (data) -> styleService.processAndSaveStyles(data));
+    public CompletableFuture<Task> uploadStylesAsync(Long taskId, byte[] fileContent, String fileName) {
+        try {
+            processFileAsync(taskId, fileContent, fileName, "STYLES", tsvProperties.getStylesHeaders(), 
+                                   (data) -> styleService.processAndSaveStyles(data));
+            // Return the final task state after processing completes
+            Task finalTask = taskDao.select(taskId);
+            return CompletableFuture.completedFuture(finalTask);
+        } catch (Exception e) {
+            logger.error("❌ Unexpected error in uploadStylesAsync: {}", e.getMessage(), e);
+            Task failedTask = taskDao.select(taskId);
+            if (failedTask != null && !"FAILED".equals(failedTask.getStatus())) {
+                failTask(failedTask, "Unexpected error: " + e.getMessage());
+            }
+            return CompletableFuture.completedFuture(failedTask);
+        }
     }
 
     /**
@@ -80,12 +94,24 @@ public class AsyncUploadService {
      * @param taskId Task ID for progress tracking
      * @param fileContent Pre-read file content as byte array
      * @param fileName Original file name
+     * @return CompletableFuture<Task> for tracking completion
      */
     @Async("fileExecutor")
     @Transactional
-    public void uploadStoresAsync(Long taskId, byte[] fileContent, String fileName) {
-        processFileAsync(taskId, fileContent, fileName, "STORES", tsvProperties.getStoreHeaders(),
-                               (data) -> storeService.processAndSaveStores(data));
+    public CompletableFuture<Task> uploadStoresAsync(Long taskId, byte[] fileContent, String fileName) {
+        try {
+            processFileAsync(taskId, fileContent, fileName, "STORES", tsvProperties.getStoreHeaders(),
+                                   (data) -> storeService.processAndSaveStores(data));
+            Task finalTask = taskDao.select(taskId);
+            return CompletableFuture.completedFuture(finalTask);
+        } catch (Exception e) {
+            logger.error("❌ Unexpected error in uploadStoresAsync: {}", e.getMessage(), e);
+            Task failedTask = taskDao.select(taskId);
+            if (failedTask != null && !"FAILED".equals(failedTask.getStatus())) {
+                failTask(failedTask, "Unexpected error: " + e.getMessage());
+            }
+            return CompletableFuture.completedFuture(failedTask);
+        }
     }
 
     /**
@@ -94,12 +120,24 @@ public class AsyncUploadService {
      * @param taskId Task ID for progress tracking
      * @param fileContent Pre-read file content as byte array
      * @param fileName Original file name
+     * @return CompletableFuture<Task> for tracking completion
      */
     @Async("fileExecutor")
     @Transactional
-    public void uploadSkusAsync(Long taskId, byte[] fileContent, String fileName) {
-        processFileAsync(taskId, fileContent, fileName, "SKUS", tsvProperties.getSkuHeaders(),
-                               (data) -> skuService.processAndSaveSKUs(data));
+    public CompletableFuture<Task> uploadSkusAsync(Long taskId, byte[] fileContent, String fileName) {
+        try {
+            processFileAsync(taskId, fileContent, fileName, "SKUS", tsvProperties.getSkuHeaders(),
+                                   (data) -> skuService.processAndSaveSKUs(data));
+            Task finalTask = taskDao.select(taskId);
+            return CompletableFuture.completedFuture(finalTask);
+        } catch (Exception e) {
+            logger.error("❌ Unexpected error in uploadSkusAsync: {}", e.getMessage(), e);
+            Task failedTask = taskDao.select(taskId);
+            if (failedTask != null && !"FAILED".equals(failedTask.getStatus())) {
+                failTask(failedTask, "Unexpected error: " + e.getMessage());
+            }
+            return CompletableFuture.completedFuture(failedTask);
+        }
     }
 
     /**
@@ -108,12 +146,24 @@ public class AsyncUploadService {
      * @param taskId Task ID for progress tracking
      * @param fileContent Pre-read file content as byte array
      * @param fileName Original file name
+     * @return CompletableFuture<Task> for tracking completion
      */
     @Async("fileExecutor")
     @Transactional
-    public void uploadSalesAsync(Long taskId, byte[] fileContent, String fileName) {
-        processFileAsync(taskId, fileContent, fileName, "SALES", tsvProperties.getSalesHeaders(),
-                               (data) -> salesService.processAndSaveSales(data));
+    public CompletableFuture<Task> uploadSalesAsync(Long taskId, byte[] fileContent, String fileName) {
+        try {
+            processFileAsync(taskId, fileContent, fileName, "SALES", tsvProperties.getSalesHeaders(),
+                                   (data) -> salesService.processAndSaveSales(data));
+            Task finalTask = taskDao.select(taskId);
+            return CompletableFuture.completedFuture(finalTask);
+        } catch (Exception e) {
+            logger.error("❌ Unexpected error in uploadSalesAsync: {}", e.getMessage(), e);
+            Task failedTask = taskDao.select(taskId);
+            if (failedTask != null && !"FAILED".equals(failedTask.getStatus())) {
+                failTask(failedTask, "Unexpected error: " + e.getMessage());
+            }
+            return CompletableFuture.completedFuture(failedTask);
+        }
     }
 
     /**
@@ -132,17 +182,17 @@ public class AsyncUploadService {
         Task task = taskDao.select(taskId);
         if (task == null) {
             logger.error("❌ Task not found: {}", taskId);
-            return;
+            throw new RuntimeException("Task not found: " + taskId);
         }
 
         MDC.put("taskId", String.valueOf(taskId));
-        logger.info("Starting async {} upload for task: {} on thread {}", fileType, taskId, Thread.currentThread().getName());
+        logger.info("✅ Starting async {} upload for task: {} on thread {}", fileType, taskId, Thread.currentThread().getName());
 
         try {
             // Update task to RUNNING status
             task.setStatus("RUNNING");
             task.setFileName(fileName);
-            task.updateProgress(0.0, "INITIALIZING", "Starting " + fileType.toLowerCase() + " file upload...");
+            task.updateProgress(0.0, "INITIALIZING: Starting " + fileType.toLowerCase() + " file upload...");
             taskDao.update(task);
 
             // Check for cancellation
@@ -151,7 +201,7 @@ public class AsyncUploadService {
             }
 
             // Phase 1: File Validation (0% → 20%)
-            task.updateProgress(10.0, "VALIDATING", "Validating file format...");
+            task.updateProgress(10.0, "VALIDATING: Validating file format...");
             taskDao.update(task);
             logger.debug("Progress 10% - Validating file format...");
 
@@ -161,13 +211,13 @@ public class AsyncUploadService {
             }
 
             // Phase 2: File Parsing (20% → 50%)
-            task.updateProgress(20.0, "PARSING", "Parsing TSV file...");
+            task.updateProgress(20.0, "PARSING: Parsing TSV file...");
             taskDao.update(task);
             logger.debug("Progress 20% - Parsing TSV file...");
 
             ArrayList<HashMap<String, String>> tsvData = fileProcessingService.processTsv(fileContent, fileName, headers);
 
-            task.updateProgress(40.0, "IN_PROGRESS", "TSV parsed, processing " + tsvData.size() + " rows...");
+            task.updateProgress(40.0, "IN_PROGRESS: TSV parsed, processing " + tsvData.size() + " rows...");
             taskDao.update(task);
             logger.debug("Progress 40% - Parsed {} records", tsvData.size());
 
@@ -177,13 +227,13 @@ public class AsyncUploadService {
             }
 
             // Phase 3: Data Processing (50% → 90%)
-            task.updateProgress(50.0, "PROCESSING", "Processing and validating data...");
+            task.updateProgress(50.0, "PROCESSING: Processing and validating data...");
             taskDao.update(task);
             logger.debug("Progress 50% - Processing and validating data...");
 
             UploadResponse result = processor.apply(tsvData);
 
-            task.updateProgress(80.0, "PROCESSING", "Saving data to database...");
+            task.updateProgress(80.0, "PROCESSING: Saving data to database...");
             taskDao.update(task);
             logger.debug("Progress 80% - Saving data to database...");
 
@@ -200,7 +250,16 @@ public class AsyncUploadService {
 
         } catch (Exception e) {
             logger.error("❌ {} upload failed for task {}: {}", fileType, taskId, e.getMessage(), e);
-            failTask(task, fileType + " upload failed: " + e.getMessage());
+            
+            // Ensure task is properly marked as failed
+            try {
+                Task failedTask = taskDao.select(taskId);
+                if (failedTask != null && !"FAILED".equals(failedTask.getStatus())) {
+                    failTask(failedTask, fileType + " upload failed: " + e.getMessage());
+                }
+            } catch (Exception failException) {
+                logger.error("❌ Failed to update task status to FAILED for task {}: {}", taskId, failException.getMessage());
+            }
         } finally {
             MDC.remove("taskId");
         }
@@ -214,7 +273,7 @@ public class AsyncUploadService {
         if (refreshedTask != null && refreshedTask.isCancellationRequested()) {
             logger.info("🛑 Cancellation detected for task: {}", task.getId());
             task.setStatus("CANCELLED");
-            task.updateProgress(task.getProgressPercentage(), "CANCELLED", "Upload was cancelled by user");
+            task.updateProgress(task.getProgressPercentage(), "CANCELLED: Upload was cancelled by user");
             taskDao.update(task);
             return true;
         }
@@ -229,9 +288,9 @@ public class AsyncUploadService {
         task.setEndTime(new java.util.Date());
         task.setProcessedRecords(result.getRecordCount());
         task.setErrorCount(result.getErrorCount());
-        task.updateProgress(100.0, "COMPLETED", 
-                          String.format("%s upload completed: %d processed, %d errors", 
-                                      fileType, result.getRecordCount(), result.getErrorCount()));
+        task.updateProgress(100.0, 
+                          String.format("COMPLETED: %s upload completed: %d processed, %d errors", 
+                                       fileType, result.getRecordCount(), result.getErrorCount()));
         
         // Add result summary to parameters
         String summary = String.format("Success: %d, Errors: %d", result.getRecordCount(), result.getErrorCount());
@@ -248,7 +307,7 @@ public class AsyncUploadService {
         task.setStatus("FAILED");
         task.setEndTime(new java.util.Date());
         task.setErrorMessage(errorMessage);
-        task.updateProgress(task.getProgressPercentage(), "FAILED", errorMessage);
+        task.updateProgress(task.getProgressPercentage(), "FAILED: " + errorMessage);
         taskDao.update(task);
         logger.error("❌ Task {} failed: {}", task.getId(), errorMessage);
     }

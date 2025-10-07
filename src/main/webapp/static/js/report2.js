@@ -11,13 +11,13 @@ function displayReport2List(data) {
 		var index = parseInt(i) + 1
 		
 		// Use meaningful field names (with fallback to legacy fields)
-		var totalTasks = dataItem.totalTasks || dataItem.field1 || 0;
-		var successfulTasks = dataItem.successfulTasks || dataItem.field2 || 0;
-		var taskType = dataItem.taskType || dataItem.field3 || 'Unknown';
-		var successRate = dataItem.successRate ? dataItem.successRate.toFixed(1) + '%' : 
-						 (dataItem.field4 ? dataItem.field4.toFixed(1) + '%' : 'N/A');
-		var avgTime = dataItem.averageExecutionTime ? dataItem.averageExecutionTime.toFixed(1) + 's' : 
-					 (dataItem.field5 ? dataItem.field5.toFixed(1) + 's' : 'N/A');
+        var totalTasks = dataItem.totalTasks || 0;
+        var successfulTasks = dataItem.successfulTasks || 0;
+        var failedTasks = dataItem.failedTasks || Math.max(0, (dataItem.totalTasks||0) - (dataItem.successfulTasks||0));
+        var taskType = dataItem.taskType || 'Unknown';
+        var successRateVal = typeof dataItem.successRate === 'number' ? dataItem.successRate : 0;
+        var successRate = successRateVal.toFixed(1) + '%';
+        var avgTime = (typeof dataItem.averageExecutionTime === 'number') ? dataItem.averageExecutionTime.toFixed(1) + 'm' : 'N/A';
 		
 		// Format task type for better display
 		var formattedTaskType = taskType.replace(/_/g, ' ').toLowerCase()
@@ -27,6 +27,7 @@ function displayReport2List(data) {
 			+'<td>' + index + '</td>'
 			+'<td><span class="badge badge-info">' + totalTasks + '</span></td>'
 			+'<td><span class="badge badge-success">' + successfulTasks + '</span></td>'
+            +'<td><span class="badge badge-danger">' + failedTasks + '</span></td>'
 			+'<td><span class="text-muted">' + formattedTaskType + '</span></td>'
 			+'<td><span class="font-weight-bold ' + (parseFloat(successRate) >= 80 ? 'text-success' : parseFloat(successRate) >= 50 ? 'text-warning' : 'text-danger') + '">' + successRate + '</span></td>'
 			+'<td>' + avgTime + '</td>'
@@ -34,7 +35,7 @@ function displayReport2List(data) {
 		$tbody.append(row);
 	}
 	$('#report2Table').DataTable({
-		"order": [[ 4, "desc" ]], // Sort by success rate descending
+        "order": [[ 5, "desc" ]], // Sort by success rate descending (column index shifts after adding Failed)
 		"pageLength": 25
 	});
 }

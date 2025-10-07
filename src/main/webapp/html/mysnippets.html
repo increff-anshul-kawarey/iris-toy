@@ -28,11 +28,14 @@
 
 <!-- ============= COMPONENT Header Start ============== -->
 <header class="navbar  navbar-dark bg-dark" th:fragment="name_header">
-    <div class="container-fluid">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
         <a th:href="@{/ui/dashboard}" class="navbar-brand" href="#">
             <img th:src="@{/static/logo.png}" class="d-inline-block align-top" alt="" width="32px">
             <span>TOY IRIS</span>
         </a>
+        <button id="themeToggleBtn" class="btn btn-sm btn-outline-light" type="button">
+            <i class="fa fa-moon-o" id="themeToggleIcon"></i>
+        </button>
     </div>
 </header>
 <!-- ============= COMPONENT Header End ============== -->
@@ -139,7 +142,7 @@
         <!-- /END Separator -->
         <a th:href="@{/ui/report1}" class="bg-dark list-group-item list-group-item-action">
             <div class="d-flex w-100 justify-content-start align-items-center">
-                <span class="fa fa-chart-bar fa-fw mr-3"></span>
+                <span class="fa fa-bar-chart fa-fw mr-3"></span>
                 <span class="menu-collapsed">NOOS Analytics</span>
             </div>
         </a>

@@ -69,29 +69,13 @@ public class Task {
     private String userId; // For audit trail
 
     @Column(name = "parameters", length = 2000)
-    private String parameters; // JSON string of algorithm parameters
+    private String parameters; // Algorithm parameters or upload metadata
 
-    // Enhanced fields for async progress tracking
-    @Column(name = "progress_percentage")
-    private Double progressPercentage = 0.0; // 0.0 to 100.0
-
-    @Column(name = "current_phase", length = 50)
-    private String currentPhase; // "DATA_LOADING", "PROCESSING", "CLASSIFICATION", etc.
-
-    @Column(name = "current_step")
-    private Integer currentStep; // Current step number
-
-    @Column(name = "total_steps")
-    private Integer totalSteps; // Total expected steps
+    @Column(name = "progress_message", length = 500)
+    private String progressMessage; // Human-readable progress message with phase info
 
     @Column(name = "result_url", length = 500)
     private String resultUrl; // Download URL for completed tasks
-
-    @Column(name = "result_type", length = 50)
-    private String resultType; // "TSV", "JSON", etc.
-
-    @Column(name = "metadata", length = 4000)
-    private String metadata; // JSON string for additional progress info
 
     @Column(name = "cancellation_requested")
     private Boolean cancellationRequested = false;
@@ -109,9 +93,6 @@ public class Task {
     protected void onCreate() {
         createdDate = new Date();
         lastUpdatedDate = createdDate;
-        if (progressPercentage == null) {
-            progressPercentage = 0.0;
-        }
         if (cancellationRequested == null) {
             cancellationRequested = false;
         }
@@ -123,13 +104,10 @@ public class Task {
     }
 
     /**
-     * Get progress percentage (backward compatibility)
+     * Get progress percentage calculated from processed/total records
+     * Returns 0-100 based on actual progress
      */
     public double getProgressPercentage() {
-        if (progressPercentage != null) {
-            return progressPercentage;
-        }
-        // Fallback to calculation if not set
         if (totalRecords == null || totalRecords == 0 || processedRecords == null) {
             return 0.0;
         }
@@ -137,16 +115,14 @@ public class Task {
     }
 
     /**
-     * Update progress with phase information
+     * Update progress with message
+     * Progress is tracked via processedRecords/totalRecords
      */
-    public void updateProgress(double percentage, String phase, String message) {
-        this.progressPercentage = percentage;
-        this.currentPhase = phase;
-        
-        // Store message in metadata if provided
-        if (message != null && !message.isEmpty()) {
-            this.metadata = String.format("{\"message\":\"%s\",\"timestamp\":\"%s\"}", 
-                                        message, new Date().toString());
+    public void updateProgress(double percentage, String message) {
+        this.progressMessage = message;
+        // Update processed records to match percentage if totalRecords is set
+        if (totalRecords != null && totalRecords > 0) {
+            this.processedRecords = (int) ((percentage / 100.0) * totalRecords);
         }
     }
 
@@ -190,5 +166,45 @@ public class Task {
      */
     public void requestCancellation() {
         this.cancellationRequested = true;
+    }
+
+    /**
+     * Validate that task is in a valid state for execution
+     * 
+     * @return true if task can be executed
+     */
+    public boolean isValidForExecution() {
+        return id != null && 
+               taskType != null && 
+               status != null &&
+               ("PENDING".equals(status) || "RUNNING".equals(status));
+    }
+
+    /**
+     * Check if task has finished (completed, failed, or cancelled)
+     * 
+     * @return true if task is in a terminal state
+     */
+    public boolean isFinished() {
+        return isCompleted() || isFailed() || isCancelled();
+    }
+
+    /**
+     * Get a human-readable status summary
+     * 
+     * @return Status summary string
+     */
+    public String getStatusSummary() {
+        if (isCompleted()) {
+            return String.format("Completed: %d records processed", processedRecords != null ? processedRecords : 0);
+        } else if (isFailed()) {
+            return String.format("Failed: %s", errorMessage != null ? errorMessage : "Unknown error");
+        } else if (isCancelled()) {
+            return "Cancelled by user";
+        } else if (isRunning()) {
+            return String.format("Running: %.1f%% complete", getProgressPercentage());
+        } else {
+            return "Pending";
+        }
     }
 }

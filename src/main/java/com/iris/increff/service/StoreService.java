@@ -4,14 +4,17 @@ import com.iris.increff.controller.UploadResponse;
 import com.iris.increff.dao.StoreDao;
 import com.iris.increff.model.Store;
 import com.iris.increff.exception.ApiException;
+import com.iris.increff.service.ValidationService.ValidationResult;
+import com.iris.increff.service.ErrorTrackingService.ErrorTracker;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service for handling Store-related operations including TSV processing.
@@ -29,14 +32,20 @@ public class StoreService {
 
     @Autowired
     private AuditService auditService;
+    
+    @Autowired
+    private ValidationService validationService;
+    
+    @Autowired
+    private ErrorTrackingService errorTrackingService;
 
     /**
-     * Process and save stores from TSV data.
+     * Process and save stores from TSV data with enhanced validation and error tracking.
      * Expected TSV format: branch, city
      * Maps directly to entity fields: branch, city
      * 
      * @param tsvData Parsed TSV data as list of row maps
-     * @return List of validation errors (empty if all successful)
+     * @return UploadResponse with success status, messages, and error tracking information
      */
     @Transactional
     public UploadResponse processAndSaveStores(ArrayList<HashMap<String, String>> tsvData) {
@@ -44,41 +53,72 @@ public class StoreService {
         List<String> errors = new ArrayList<>();
         List<String> messages = new ArrayList<>();
         List<Store> storesToSave = new ArrayList<>();
+        
+        // Initialize error tracker
+        String[] headers = {"branch", "city"};
+        ErrorTracker errorTracker = new ErrorTracker(headers);
 
         // Tests expect clearing messages even if we don't delete in UPSERT mode
         messages.add("Clearing existing data (UPSERT mode - no deletion)");
 
-        // First pass: Validate all data and collect errors
+        // First pass: Comprehensive validation with detailed error tracking
         for (int i = 0; i < tsvData.size(); i++) {
             HashMap<String, String> row = tsvData.get(i);
             int rowNumber = i + 2; // +2 because: +1 for 0-indexing, +1 for header row
 
             try {
-                Store store = convertTsvRowToStore(row);
+                Store store = convertTsvRowToStoreWithValidation(row, rowNumber, errorTracker);
+                
+                if (store != null) {
+                    // Check for duplicate branches within the uploaded data
+                    boolean duplicateInBatch = storesToSave.stream()
+                        .anyMatch(s -> s.getBranch().equals(store.getBranch()));
 
-                // Check for duplicate branches within the uploaded data
-                boolean duplicateInBatch = storesToSave.stream()
-                    .anyMatch(s -> s.getBranch().equals(store.getBranch()));
+                    if (duplicateInBatch) {
+                        errorTracker.addDuplicateError(rowNumber, row, "branch", store.getBranch());
+                        continue;
+                    }
 
-                if (duplicateInBatch) {
-                    errors.add("Row " + rowNumber + ": Duplicate branch '" +
-                               store.getBranch() + "' found within uploaded file");
-                    continue;
+                    storesToSave.add(store);
                 }
 
-                storesToSave.add(store);
-
             } catch (Exception e) {
-                errors.add("Row " + rowNumber + ": " + e.getMessage());
+                errorTracker.addError(rowNumber, row, "Unexpected error: " + e.getMessage(), "SYSTEM_ERROR");
+            }
+        }
+
+        // Generate error files and summary if there are errors
+        Map<String, String> errorFiles = new HashMap<>();
+        Map<String, Object> errorSummary = new HashMap<>();
+        
+        if (errorTracker.hasErrors()) {
+            try {
+                errorFiles = errorTrackingService.saveErrorFiles(errorTracker, "STORES", String.valueOf(System.currentTimeMillis()));
+                errorSummary = errorTrackingService.generateErrorSummary(errorTracker);
+                
+                // Add error summary to legacy errors list for backward compatibility
+                errors.add("Total validation errors: " + errorTracker.getTotalErrors());
+                errors.addAll(errorTracker.getErrorRows().stream()
+                    .limit(10) // Show first 10 errors in legacy format
+                    .map(errorRow -> "Row " + errorRow.getRowNumber() + ": " + errorRow.getErrorReason())
+                    .collect(java.util.stream.Collectors.toList()));
+                
+                if (errorTracker.getTotalErrors() > 10) {
+                    errors.add("... and " + (errorTracker.getTotalErrors() - 10) + " more errors. Download error files for complete details.");
+                }
+                
+            } catch (IOException e) {
+                errors.add("Failed to generate error files: " + e.getMessage());
             }
         }
 
         // If there are validation errors, don't proceed with database operations
-        if (!errors.isEmpty()) {
+        if (errorTracker.hasErrors()) {
             response.setSuccess(false);
             response.setErrors(errors);
             response.setMessages(messages);
-            response.setErrorCount(errors.size());
+            response.setErrorCount(errorTracker.getTotalErrors());
+            response.setErrorTrackingInfo(errorSummary, errorFiles);
             return response;
         }
 
@@ -208,6 +248,43 @@ public class StoreService {
             throw new ApiException(fieldName + " must be between " + minLength + 
                                  " and " + maxLength + " characters, found: " + value.length());
         }
+    }
+
+    /**
+     * Convert TSV row to Store entity with comprehensive validation and error tracking.
+     * Uses ValidationService for detailed field validation and ErrorTracker for error collection.
+     * 
+     * @param row TSV row as key-value map
+     * @param rowNumber Row number for error reporting
+     * @param errorTracker Error tracker for collecting validation errors
+     * @return Validated Store entity, or null if validation fails
+     */
+    private Store convertTsvRowToStoreWithValidation(HashMap<String, String> row, int rowNumber, ErrorTracker errorTracker) {
+        Store store = new Store();
+        boolean hasErrors = false;
+        
+        // Validate branch
+        String branch = row.get("branch");
+        ValidationResult branchResult = validationService.validateBranch(branch);
+        if (!branchResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "branch", branchResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            store.setBranch(branch.trim().toUpperCase());
+        }
+        
+        // Validate city
+        String city = row.get("city");
+        ValidationResult cityResult = validationService.validateCity(city);
+        if (!cityResult.isValid()) {
+            errorTracker.addValidationError(rowNumber, row, "city", cityResult.getErrorMessage());
+            hasErrors = true;
+        } else {
+            store.setCity(city.trim().toUpperCase());
+        }
+        
+        // Return null if any validation failed
+        return hasErrors ? null : store;
     }
 
     /**

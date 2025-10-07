@@ -373,6 +373,19 @@ public class FileController {
     @Transactional
     public ResponseEntity<Task> uploadSkusTsvAsync(@RequestPart("file") MultipartFile file) {
         logger.info("Async SKUs upload requested: {}", file.getOriginalFilename());
+        
+        // Dependency validation: SKUs require Styles to exist
+        try {
+            List<com.iris.increff.model.Style> styles = styleService.getAllStyles();
+            if (styles.isEmpty()) {
+                return createDependencyErrorResponse("SKU upload requires styles data to be uploaded first. Please upload styles.tsv before uploading SKUs.", "SKUS_UPLOAD", file.getOriginalFilename());
+            }
+            logger.info("✅ Dependency check passed: {} styles found for SKU upload", styles.size());
+        } catch (Exception e) {
+            logger.error("❌ Failed to check styles dependency for SKU upload: {}", e.getMessage());
+            return createDependencyErrorResponse("Unable to verify styles data. Please ensure styles are uploaded first.", "SKUS_UPLOAD", file.getOriginalFilename());
+        }
+        
         return processAsyncUpload(file, "SKUS_UPLOAD",
                                 (taskId, fileContent, fileName) -> asyncUploadService.uploadSkusAsync(taskId, fileContent, fileName));
     }
@@ -382,6 +395,26 @@ public class FileController {
     @Transactional
     public ResponseEntity<Task> uploadSalesTsvAsync(@RequestPart("file") MultipartFile file) {
         logger.info("Async Sales upload requested: {}", file.getOriginalFilename());
+        
+        // Dependency validation: Sales require both SKUs and Stores to exist
+        try {
+            List<com.iris.increff.model.SKU> skus = skuService.getAllSKUs();
+            List<com.iris.increff.model.Store> stores = storeService.getAllStores();
+            
+            if (skus.isEmpty() && stores.isEmpty()) {
+                return createDependencyErrorResponse("Sales upload requires both SKUs and stores data to be uploaded first. Please upload styles.tsv, skus.tsv, and stores.tsv before uploading sales.", "SALES_UPLOAD", file.getOriginalFilename());
+            } else if (skus.isEmpty()) {
+                return createDependencyErrorResponse("Sales upload requires SKUs data to be uploaded first. Please upload styles.tsv and skus.tsv before uploading sales.", "SALES_UPLOAD", file.getOriginalFilename());
+            } else if (stores.isEmpty()) {
+                return createDependencyErrorResponse("Sales upload requires stores data to be uploaded first. Please upload stores.tsv before uploading sales.", "SALES_UPLOAD", file.getOriginalFilename());
+            }
+            
+            logger.info("✅ Dependency check passed: {} SKUs and {} stores found for Sales upload", skus.size(), stores.size());
+        } catch (Exception e) {
+            logger.error("❌ Failed to check dependencies for Sales upload: {}", e.getMessage());
+            return createDependencyErrorResponse("Unable to verify required data. Please ensure SKUs and stores are uploaded first.", "SALES_UPLOAD", file.getOriginalFilename());
+        }
+        
         return processAsyncUpload(file, "SALES_UPLOAD",
                                 (taskId, fileContent, fileName) -> asyncUploadService.uploadSalesAsync(taskId, fileContent, fileName));
     }
@@ -408,7 +441,7 @@ public class FileController {
             task.setUserId("system");
             task.setFileName(fileName);
             task.setParameters("fileName=" + fileName + ", fileSize=" + fileContent.length);
-            task.updateProgress(0.0, "PENDING", "Upload task created, waiting to start...");
+            task.updateProgress(0.0, "PENDING: Upload task created, waiting to start...");
             
             // Save task to get ID
             taskDao.insert(task);
@@ -533,8 +566,33 @@ public class FileController {
         task.setStatus("PENDING");
         task.setStartTime(new java.util.Date());
         task.setUserId("system");
-        task.updateProgress(0.0, "PENDING", "Download task created, waiting to start...");
+        task.updateProgress(0.0, "PENDING: Download task created, waiting to start...");
         return task;
+    }
+
+    /**
+     * Create error response for dependency validation failures
+     * 
+     * @param errorMessage Clear message about what's missing
+     * @param taskType Type of upload that failed
+     * @param fileName Name of the file being uploaded
+     * @return HTTP 400 with detailed error task
+     */
+    private ResponseEntity<Task> createDependencyErrorResponse(String errorMessage, String taskType, String fileName) {
+        logger.warn("🚫 Dependency validation failed: {}", errorMessage);
+        
+        Task errorTask = new Task();
+        errorTask.setTaskType(taskType);
+        errorTask.setStatus("FAILED");
+        errorTask.setErrorMessage(errorMessage);
+        errorTask.setUserId("system");
+        errorTask.setFileName(fileName);
+        errorTask.setStartTime(new java.util.Date());
+        errorTask.setEndTime(new java.util.Date());
+        errorTask.updateProgress(0.0, "FAILED: Dependency validation failed");
+        
+        // Don't persist this task since it never actually started
+        return ResponseEntity.badRequest().body(errorTask); // HTTP 400 Bad Request
     }
 
     /**

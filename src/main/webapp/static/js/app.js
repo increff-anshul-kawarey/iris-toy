@@ -127,9 +127,33 @@ function uploadAjaxAsync(url,formData)
 
     // Extract file type from URL for status updates
     var fileType = url.split('/').pop().replace('/async', '');
+    console.log("🚀 Starting async upload for:", fileType, "URL:", url);
+    
+    // Ensure we have a valid file type
+    if (!fileType || fileType === '') {
+        console.error("❌ Could not extract file type from URL:", url);
+        messageAlertFail("Invalid upload URL");
+        return;
+    }
+    
+    // Ensure file type is one of the expected values
+    var validFileTypes = ['styles', 'stores', 'skus', 'sales'];
+    if (!validFileTypes.includes(fileType)) {
+        console.warn("⚠️ Unexpected file type:", fileType, "URL:", url);
+        // Try to extract from the full URL path
+        var urlParts = url.split('/');
+        for (var i = 0; i < urlParts.length; i++) {
+            if (validFileTypes.includes(urlParts[i])) {
+                fileType = urlParts[i];
+                console.log("🔧 Corrected file type to:", fileType);
+                break;
+            }
+        }
+    }
 
-    // Set processing status
-    setUploadStatus(fileType, {processing: true});
+    // Set processing status immediately and force UI update
+    console.log("🔄 Setting initial processing status for:", fileType);
+    setUploadStatus(fileType, {processing: true, failed: false});
 
     $.ajax({
         url: url,
@@ -141,16 +165,24 @@ function uploadAjaxAsync(url,formData)
             console.log("Async upload started:", task);
             
             if (task.status === "FAILED") {
-                setUploadStatus(fileType, {failed: true});
+                setUploadStatus(fileType, {processing: false, failed: true});
                 messageAlertFail("Upload failed: " + (task.errorMessage || "Unknown error"));
                 return;
             }
+            
+            // Ensure processing status is maintained and store task info
+            setUploadStatus(fileType, {processing: true, failed: false});
             
             // Show success message for task creation
             messageAlertPass("Upload started successfully! Processing in background...");
             
             // Start polling for task status
             if (task.id) {
+                // Store task info globally for cancel functionality
+                window.currentUploadTaskId = task.id;
+                window.currentUploadFileType = fileType;
+                console.log("Stored task ID for cancel:", task.id, "fileType:", fileType);
+                
                 pollTaskStatus(task.id, fileType);
             } else {
                 // Fallback: refresh status after a delay
@@ -162,7 +194,7 @@ function uploadAjaxAsync(url,formData)
         error: function (errormessage) {
             console.log("Async upload error:", errormessage);
             // Clear processing status and set failed status
-            setUploadStatus(fileType, {failed: true});
+            setUploadStatus(fileType, {processing: false, failed: true});
             
             if (errormessage.status === 429) {
                 messageAlertFail("System is busy. Too many concurrent uploads. Please try again later.");
@@ -180,72 +212,101 @@ function uploadAjaxAsync(url,formData)
 }
 
 function pollTaskStatus(taskId, fileType) {
-    var maxPolls = 60; // Maximum 5 minutes (60 * 5 seconds)
+    var maxPolls = 120; // Maximum 10 minutes (120 * 5 seconds) for long-running tasks
     var pollCount = 0;
     
-    // Store taskId globally so cancel button can access it
+    console.log("🔍 Starting polling for task:", taskId, "fileType:", fileType);
+    
+    // Ensure task info is stored globally for cancel functionality
     window.currentUploadTaskId = taskId;
     window.currentUploadFileType = fileType;
     
     function checkStatus() {
         pollCount++;
+        var pollUrl = getRunUrl() + '/tasks/' + taskId;
+        console.log("📡 Polling attempt", pollCount, "URL:", pollUrl);
         
         $.ajax({
-            url: getRunUrl() + '/tasks/' + taskId,
+            url: pollUrl,
             type: 'GET',
             success: function(task) {
-                console.log("Task status poll " + pollCount + ":", task);
+                console.log("📊 Task status poll " + pollCount + ":", task);
                 
                 if (task.status === "COMPLETED") {
-                    setUploadStatus(fileType, {processing: false});
+                    setUploadStatus(fileType, {processing: false, failed: false});
                     messageAlertPass("Upload completed successfully! " + (task.progressMessage || ""));
                     fetchDataStatus(); // Refresh the data status
                     window.currentUploadTaskId = null; // Clear task reference
+                    window.currentUploadFileType = null;
                 } else if (task.status === "FAILED") {
                     setUploadStatus(fileType, {failed: true, processing: false});
                     messageAlertFail("Upload failed: " + (task.errorMessage || "Unknown error"));
                     window.currentUploadTaskId = null; // Clear task reference
+                    window.currentUploadFileType = null;
                 } else if (task.status === "CANCELLED") {
-                    setUploadStatus(fileType, {processing: false});
+                    setUploadStatus(fileType, {processing: false, failed: false});
                     messageAlertWarn("Upload was cancelled by user");
                     fetchDataStatus(); // Refresh the data status
                     window.currentUploadTaskId = null; // Clear task reference
+                    window.currentUploadFileType = null;
                 } else if (task.status === "PENDING" || task.status === "RUNNING") {
+                    console.log("🔄 Task is", task.status, "- maintaining processing status");
+                    // Ensure processing status is maintained during polling
+                    setUploadStatus(fileType, {processing: true, failed: false});
+                    
                     // Update progress message if available
-                    var progressMsg = task.currentPhase || task.progressMessage || "";
+                    var progressMsg = task.progressMessage || "";
                     var progressPct = task.progressPercentage || 0;
-                    console.log("Progress: " + progressPct + "% - " + progressMsg);
+                    console.log("📈 Progress: " + progressPct + "% - " + progressMsg);
+                    
+                    // Always update progress in the UI, even if percentage is 0
+                    console.log("🎯 Updating UI with progress:", progressPct + "%", progressMsg);
+                    setUploadStatus(fileType, {
+                        processing: true, 
+                        failed: false,
+                        progressPercentage: progressPct,
+                        progressMessage: progressMsg
+                    });
                     
                     // Continue polling if not exceeded max attempts
                     if (pollCount < maxPolls) {
-                        setTimeout(checkStatus, 5000); // Poll every 5 seconds
+                        // Poll more frequently initially, then less frequently
+                        var pollInterval = pollCount < 5 ? 2000 : 5000; // 2s for first 5 polls, then 5s
+                        setTimeout(checkStatus, pollInterval);
                     } else {
                         messageAlertWarn("Upload is taking longer than expected. Please check the status later.");
-                        setUploadStatus(fileType, {processing: false});
+                        setUploadStatus(fileType, {processing: false, failed: false});
                         window.currentUploadTaskId = null;
+                        window.currentUploadFileType = null;
                     }
                 } else {
                     // Unknown status, stop polling
                     messageAlertWarn("Upload status unknown. Please refresh the page to check current status.");
-                    setUploadStatus(fileType, {processing: false});
+                    setUploadStatus(fileType, {processing: false, failed: false});
                     window.currentUploadTaskId = null;
+                    window.currentUploadFileType = null;
                 }
             },
             error: function(err) {
-                console.log("Error polling task status:", err);
+                console.error("❌ Error polling task status:", err);
+                console.error("❌ Error details - Status:", err.status, "Response:", err.responseText);
                 if (pollCount < maxPolls) {
-                    setTimeout(checkStatus, 5000); // Retry after 5 seconds
+                    var retryInterval = pollCount < 5 ? 2000 : 5000; // 2s for first 5 polls, then 5s
+                    console.log("🔄 Retrying poll in " + (retryInterval/1000) + " seconds... (attempt " + pollCount + "/" + maxPolls + ")");
+                    setTimeout(checkStatus, retryInterval);
                 } else {
+                    console.error("❌ Max polling attempts reached, stopping");
                     messageAlertWarn("Unable to check upload status. Please refresh the page.");
-                    setUploadStatus(fileType, {processing: false});
+                    setUploadStatus(fileType, {processing: false, failed: false});
                     window.currentUploadTaskId = null;
+                    window.currentUploadFileType = null;
                 }
             }
         });
     }
     
-    // Start polling after a short delay
-    setTimeout(checkStatus, 2000);
+    // Start polling immediately, then every 5 seconds
+    checkStatus();
 }
 
 /**
@@ -319,7 +380,7 @@ function downloadAsync(url, fileType) {
 }
 
 function pollDownloadStatus(taskId, fileType) {
-    var maxPolls = 60; // Maximum 5 minutes (60 * 5 seconds)
+    var maxPolls = 120; // Maximum 10 minutes (120 * 5 seconds) for long-running tasks
     var pollCount = 0;
     
     // Store taskId for potential cancellation
@@ -353,7 +414,7 @@ function pollDownloadStatus(taskId, fileType) {
                     window.currentDownloadTaskId = null; // Clear task reference
                 } else if (task.status === "PENDING" || task.status === "RUNNING") {
                     // Update progress message if available
-                    var progressMsg = task.currentPhase || task.progressMessage || "";
+                    var progressMsg = task.progressMessage || "";
                     var progressPct = task.progressPercentage || 0;
                     console.log("Download progress: " + progressPct + "% - " + progressMsg);
                     
@@ -542,13 +603,113 @@ function downloadInputFileTemplate(id)
 	window.open(url, '_blank').focus();
 }
 
-function setUploadStatus(fileType, status) {
-    // Update the status in the current data and refresh display
-    if (window.currentStatusData) {
-        window.currentStatusData[fileType] = Object.assign(window.currentStatusData[fileType] || {}, status);
-        // Trigger a re-render of the upload list
-        displayUploadList(window.currentStatusData);
+// ========== Theme Toggle ========== 
+function initThemeToggle(){
+    var btn = document.getElementById('themeToggleBtn');
+    var icon = document.getElementById('themeToggleIcon');
+    if(!btn || !icon) {
+        console.log('Theme toggle elements not found');
+        return;
     }
+
+    // Load preferred theme
+    try {
+        var saved = localStorage.getItem('toyiris.theme') || 'light';
+        setTheme(saved);
+    } catch(e) {
+        console.log('Error loading theme:', e);
+    }
+
+    btn.addEventListener('click', function(){
+        var current = document.documentElement.getAttribute('data-theme') || 'light';
+        var next = current === 'dark' ? 'light' : 'dark';
+        console.log('Switching theme from', current, 'to', next);
+        setTheme(next);
+        try { localStorage.setItem('toyiris.theme', next); } catch(e) {}
+    });
+
+    function setTheme(mode){
+        document.documentElement.setAttribute('data-theme', mode);
+        if(mode === 'dark') {
+            icon.classList.remove('fa-moon-o');
+            icon.classList.add('fa-sun-o');
+        } else {
+            icon.classList.remove('fa-sun-o');
+            icon.classList.add('fa-moon-o');
+        }
+        console.log('Theme set to:', mode);
+    }
+}
+
+// Initialize theme toggle when DOM is ready or immediately if already loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initThemeToggle);
+} else {
+    initThemeToggle();
+}
+
+function setUploadStatus(fileType, status) {
+    console.log("🔄 setUploadStatus called:", fileType, status);
+    
+    // Initialize currentStatusData if it doesn't exist
+    if (!window.currentStatusData) {
+        console.log("🔧 Initializing currentStatusData");
+        window.currentStatusData = {
+            "styles": {"exists": false, "count": 0},
+            "stores": {"exists": false, "count": 0},
+            "skus": {"exists": false, "count": 0},
+            "sales": {"exists": false, "count": 0}
+        };
+    }
+    
+    // Update the status in the current data
+    var oldStatus = window.currentStatusData[fileType] || {};
+    window.currentStatusData[fileType] = Object.assign(oldStatus, status);
+    console.log("📊 Updated status for", fileType, ":", window.currentStatusData[fileType]);
+    
+    // Update only the specific card instead of re-rendering all cards
+    updateSingleUploadCard(fileType, window.currentStatusData[fileType]);
+    console.log("✅ UI refreshed for", fileType);
+}
+
+/**
+ * Update a single upload card instead of re-rendering all cards
+ * This is more efficient for task status updates
+ */
+function updateSingleUploadCard(fileType, statusData) {
+    // Find the upload file configuration
+    var uploadFile = null;
+    for (var i in uploadJson.uploadFiles) {
+        if (uploadJson.uploadFiles[i].id === fileType) {
+            uploadFile = uploadJson.uploadFiles[i];
+            break;
+        }
+    }
+    
+    if (!uploadFile) {
+        console.warn("Upload file config not found for:", fileType);
+        return;
+    }
+    
+    // Find the card container for this file type
+    var $cardsRow = $('#upload-cards-row');
+    var $existingCard = $cardsRow.find('[data-file-type="' + fileType + '"]').parent();
+    
+    if ($existingCard.length === 0) {
+        // Card doesn't exist yet, fall back to full re-render
+        console.log("Card not found for", fileType, "- falling back to full render");
+        displayUploadList(window.currentStatusData);
+        return;
+    }
+    
+    // Create new card HTML
+    var newCardHtml = createUploadCard(statusData, uploadFile);
+    
+    // Replace the existing card
+    $existingCard.replaceWith(newCardHtml);
+    
+    // Add data attribute to the new card for future updates
+    $cardsRow.find('.card').last().attr('data-file-type', fileType);
 }
 
 function fetchDataStatus() {
@@ -710,9 +871,10 @@ function performClearAllData() {
                 
                 messageAlertPass(message);
                 
-                // Refresh data status
+                // Refresh data status immediately and again after a delay
                 if (typeof fetchDataStatus === 'function') {
-                    setTimeout(fetchDataStatus, 500);
+                    fetchDataStatus(); // Immediate refresh
+                    setTimeout(fetchDataStatus, 1000); // Delayed refresh to ensure backend is updated
                 }
             } else {
                 messageAlertFail("Failed to clear data: " + response.message);
